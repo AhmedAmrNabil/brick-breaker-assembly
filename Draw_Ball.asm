@@ -10,14 +10,11 @@ PUBLIC Draw_Ball
 .CODE
 Draw_Ball PROC FAR
 
-    ;   MOV AX, @DATA
-    ; MOV DS, AX
-    MOV AX,00h
 
+  
     MOV AH,00h  ;Move to graphic mode
     MOV AL,13h
     INT 10h
-
 
 
     MOV CX,Ball_X   ;Mov the x,y for ball
