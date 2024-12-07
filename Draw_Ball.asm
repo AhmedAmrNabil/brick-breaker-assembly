@@ -1,11 +1,12 @@
+EXTRN Ball_X:WORD
+EXTRN Ball_Y:WORD
+EXTRN Ball_Pixels:WORD
+
+
 PUBLIC Draw_Ball
 .MODEL SMALL
 .STACK 100h
 
-.DATA
-    Ball_X DW 9Ah   
-    Ball_Y DW 5Ah 
-    Ball_Pixels DW 06h
 .CODE
 Draw_Ball PROC FAR
 
