@@ -24,20 +24,20 @@ drawTile PROC FAR
 
 	; get the x pixel coordinate
 	MOV AL, BL
-	MOV DL, tileWidth
+	MOV DL, TILE_WIDTH
 	MUL DL
 	MOV TILE_START_X, AX
-	ADD AX, tileWidth
+	ADD AX, TILE_WIDTH
 	MOV TILE_END_X, AX
 
 	MOV AX, 0
 
 	; get the y pixel coordinate
 	MOV AL, BH
-	MOV DL, tileHeight
+	MOV DL, TILE_HEIGHT
 	MUL DL
 	MOV TILE_START_Y, AX
-	ADD AX, tileHeight
+	ADD AX, TILE_HEIGHT
 	MOV TITLE_END_Y, AX
 
 	; draw the tile
