@@ -9,7 +9,7 @@
 
 .CODE
 
-DRAW_PADDLE PROC FAR
+drawPaddle PROC FAR
     MOV DX, PADDLE_Y             
 DRAW_ROW:
     PUSH DX                       
@@ -55,7 +55,7 @@ NEXT_PIXEL:
     JL DRAW_ROW                    
 
     RET
-DRAW_PADDLE ENDP
+drawPaddle ENDP
 
 MAIN PROC FAR
     MOV AX, @DATA
@@ -67,10 +67,10 @@ MAIN PROC FAR
     INT 10h
 
   
-    CALL DRAW_PADDLE 
+    CALL drawPaddle
 
 
     MOV AH, 4Ch
     INT 21h
-ENDP
+MAIN ENDP
 END MAIN
