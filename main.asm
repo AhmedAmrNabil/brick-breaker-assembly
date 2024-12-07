@@ -1,4 +1,4 @@
-EXTERN drawTile:FAR
+EXTRN drawTile:FAR
 
 .model small
 .386

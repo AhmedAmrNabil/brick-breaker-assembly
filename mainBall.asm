@@ -1,4 +1,5 @@
-PUBLIC Draw_Ball
+EXTRN Draw_Ball:FAR
+
 .MODEL SMALL
 .STACK 100h
 
@@ -7,11 +8,10 @@ PUBLIC Draw_Ball
     Ball_Y DW 5Ah 
     Ball_Pixels DW 06h
 .CODE
-Draw_Ball PROC FAR
-
-    ;   MOV AX, @DATA
-    ; MOV DS, AX
-    ; MOV AX,00h
+MAIN PROC
+      MOV AX, @DATA
+    MOV DS, AX
+    MOV AX,00h
 
     MOV AH,00h  ;Move to graphic mode
     MOV AL,13h
@@ -46,6 +46,6 @@ Draw_Ball PROC FAR
     CMP AX,Ball_Pixels
     JNG DRAW_HORIZONTAL_VERTICAL   ;Loop for Y-axis
 
-
- Draw_Ball ENDP
- END
+INT 21h
+MAIN ENDP
+END MAIN
