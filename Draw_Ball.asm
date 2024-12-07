@@ -12,7 +12,7 @@ Draw_Ball PROC FAR
 
     ;   MOV AX, @DATA
     ; MOV DS, AX
-    ; MOV AX,00h
+    MOV AX,00h
 
     MOV AH,00h  ;Move to graphic mode
     MOV AL,13h
