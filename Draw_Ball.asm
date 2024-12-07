@@ -6,7 +6,8 @@
     Ball_Y DW 5Ah 
     Ball_Pixels DW 06h
 .CODE
-MAIN PROC
+Draw_Ball PROC FAR
+
       MOV AX, @DATA
     MOV DS, AX
     MOV AX,00h
@@ -45,5 +46,5 @@ MAIN PROC
     JNG DRAW_HORIZONTAL_VERTICAL   ;Loop for Y-axis
 
 INT 21h
-MAIN ENDP
+ ENDP
 END MAIN
