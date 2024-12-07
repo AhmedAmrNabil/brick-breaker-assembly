@@ -1,3 +1,4 @@
+PUBLIC Draw_Ball
 .MODEL SMALL
 .STACK 100h
 
@@ -45,6 +46,6 @@ Draw_Ball PROC FAR
     CMP AX,Ball_Pixels
     JNG DRAW_HORIZONTAL_VERTICAL   ;Loop for Y-axis
 
-INT 21h
- ENDP
-END MAIN
+
+ Draw_Ball ENDP
+ END
