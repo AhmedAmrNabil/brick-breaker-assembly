@@ -1,12 +1,24 @@
 EXTRN drawSeparator:FAR
 EXTRN drawTile:FAR
 EXTRN drawPaddle:FAR
+EXTRN clearPaddle:FAR
 EXTRN drawBall:FAR
+EXTRN checkInput:FAR
+EXTRN movePaddle:FAR
 
 PUBLIC PADDLE_X
-PUBLIC PADDLE_Y
+PUBLIC PADDLE1_X
 PUBLIC BALL_X
 PUBLIC BALL_Y
+PUBLIC PADDLE1_VEL_X
+
+
+getSystemTime MACRO
+                  MOV AH,2CH    ;get the system time
+                  INT 21H       ; CH = hour, CL = minute, DH = seconds, DL = 1/100s
+
+ENDM
+
 
 .MODEL small
 .386
@@ -15,10 +27,8 @@ PUBLIC BALL_Y
 .DATA
 	PADDLE_X dw ?
 	PADDLE_Y dw ?
-	PADDLE1_X dw 49
-	PADDLE1_Y dw 180
-	PADDLE2_X dw 213
-	PADDLE2_Y dw 180
+	PADDLE1_X dw 0
+	PADDLE2_X dw 160
 
 	BALL_X dw ?
 	BALL_Y dw ?
@@ -27,8 +37,13 @@ PUBLIC BALL_Y
 	BALL2_X dw 238
 	BALL2_Y dw 150
 
+	PADDLE1_VEL_X dw 0
+
+	TIME DB 0
+
 	BRICKS_COLS EQU 8
 	BRICKS_COUNT EQU 48
+	PADDLE_VEL_MAG EQU 5
 
 .CODE
 MAIN PROC FAR
@@ -71,15 +86,11 @@ printLoop2:
 	; draw the paddle (player 1)
 	MOV AX, PADDLE1_X
 	MOV PADDLE_X, AX
-	MOV AX, PADDLE1_Y
-	MOV PADDLE_Y, AX
 	CALL drawPaddle
 
 	; draw the paddle (player 2)
 	MOV AX, PADDLE2_X
 	MOV PADDLE_X, AX
-	MOV AX, PADDLE2_Y
-	MOV PADDLE_Y, AX
 	CALL drawPaddle
 
 	; draw the ball (player 1)
@@ -96,6 +107,31 @@ printLoop2:
 	MOV BALL_Y, AX
 	CALL drawBall
 
-	HLT
+
+gameLoop:
+	call checkInput
+	GetSystemTime
+	CMP DL, TIME
+	JE gameLoop
+	MOV TIME, DL
+
+
+WaitForVSync:
+    MOV DX, 03DAh         ; VGA Input Status Register 1
+WaitForRetrace:
+    IN AL, DX
+    TEST AL, 08H          ; Check the Vertical Retrace bit (bit 3)
+    JZ WaitForRetrace     ; Loop until retrace starts
+
+	CALL movePaddle
+
+
+
+	CALL drawSeparator
+	jmp gameLoop
+
+	; exit the program:
+	MOV AH, 4CH
+	INT 21h
 MAIN ENDP
 END MAIN
