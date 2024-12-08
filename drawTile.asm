@@ -1,103 +1,105 @@
 PUBLIC drawTile
 
-.model small
+.MODEL small
 .386
-.data
-	tileStartX   dw  0
-	tileEndX     dw  0
-	tileStartY   dw  0
-	tileEndY     dw  0
+.DATA
+	TILE_START_X dw  0
+	TILE_END_X   dw  0
+	TILE_START_Y dw  0
+	TITLE_END_Y   dw  0
 
-	windowWidth  equ 160
-	tileWidth    equ 20
-	tileHeight   equ 10
-	brickColor   equ 20d
-	borderColor1 equ 18d
-	borderColor2 equ 22d
+	TILE_WIDTH  equ 20
+	TILE_HEIGHT equ 10
+	BRICK_COLOR equ 20d
+	BORDER_COLOR_1 equ 18d
+	BORDER_COLOR_2 equ 22d
 
-.code
-drawTile proc far
-	                pusha
-	                pushf
+.CODE
+drawTile PROC FAR
+	PUSHA
+	PUSHF
 
-	                mov   bx,ax          	; bh = y, bl = x
-	                mov   ax,0
-	;get the x pixel coordinate
-	                mov   al,bl
-	                mov   dl,tileWidth
-	                mul   dl
-	                mov   tileStartX,ax
-	                add   ax,tileWidth
-	                mov   tileEndX ,ax
+	MOV BX, AX    	; BH = y, BL = x
+	MOV AX, 0
 
-	                mov   ax,0
-	;get the y pixel coordinate
-	                mov   al,bh
-	                mov   dl,tileHeight
-	                mul   dl
-	                mov   tileStartY,ax
-	                add   ax,tileHeight
-	                mov   tileEndY ,ax
+	; get the x pixel coordinate
+	MOV AL, BL
+	MOV DL, TILE_WIDTH
+	MUL DL
+	MOV TILE_START_X, AX
+	ADD AX, TILE_WIDTH
+	MOV TILE_END_X, AX
+
+	MOV AX, 0
+
+	; get the y pixel coordinate
+	MOV AL, BH
+	MOV DL, TILE_HEIGHT
+	MUL DL
+	MOV TILE_START_Y, AX
+	ADD AX, TILE_HEIGHT
+	MOV TITLE_END_Y, AX
 
 	; draw the tile
-	                mov   al,brickColor
-	                mov   ah,0ch
-	                mov   cx,tileStartX
-	                mov   dx,tileStartY
-	drawX:          int   10h
-	                inc   dx
-	                cmp   dx,tileEndY
-	                jl    drawX
-	                mov   dx,tileStartY
-	                inc   cx
-	                cmp   cx,tileEndX
-	                jl    drawX
+	MOV AL, BRICK_COLOR
+	MOV AH, 0ch
+	MOV CX, TILE_START_X
+	MOV DX, TILE_START_Y
+drawX:
+	INT 10h
+	INC DX
+	CMP DX, TITLE_END_Y
+	JL drawX
+	MOV DX, TILE_START_Y
+	INC CX
+	CMP CX, TILE_END_X
+	JL drawX
 
-	;draw borders
+	; draw borders
+	MOV AL, BORDER_COLOR_2
+	MOV AH, 0ch
+	MOV CX, TILE_START_X
+	MOV DX, TILE_START_Y
+drawLeftBorder:
+	INT 10h
+	INC DX
+	CMP DX, TITLE_END_Y
+	JL drawLeftBorder
 
-	                mov   al,borderColor2
-	                mov   ah,0ch
-	                mov   cx,tileStartX
-	                mov   dx,tileStartY
-	drawLeftBorder: int   10h
-	                inc   dx
-	                cmp   dx,tileEndY
-	                jl    drawLeftBorder
+	MOV AL, BORDER_COLOR_1
+	MOV AH, 0ch
+	MOV CX, TILE_END_X
+	DEC CX
+	MOV DX, TILE_START_Y
+drawRightBorder:
+	INT 10h
+	INC DX
+	CMP DX, TITLE_END_Y
+	JL drawRightBorder
 
+	MOV AL, BORDER_COLOR_2
+	MOV AH, 0ch
+	MOV CX, TILE_START_X
+	MOV DX, TILE_START_Y
+drawTopBorder:
+	INT 10h
+	INC CX
+	CMP CX, TILE_END_X
+	JL drawTopBorder
 
-	                mov   al,borderColor1
-	                mov   ah,0ch
-	                mov   cx,tileEndX
-	                dec   cx
-	                mov   dx,tileStartY
-	drawRightBorder:int   10h
-	                inc   dx
-	                cmp   dx,tileEndY
-	                jl    drawRightBorder
+	MOV AL, BORDER_COLOR_1
+	MOV AH, 0ch
+	MOV CX, TILE_START_X
+	MOV DX, TITLE_END_Y
+	DEC DX
+drawBotBorder:
+	INT 10h
+	INC CX
+	CMP CX, TILE_END_X
+	JL drawBotBorder
 
-	                mov   al,borderColor2
-	                mov   ah,0ch
-	                mov   cx,tileStartX
-	                mov   dx,tileStartY
-	drawTopBorder:  int   10h
-	                inc   cx
-	                cmp   cx,tileEndX
-	                jl    drawTopBorder
-
-	                mov   al,borderColor1
-	                mov   ah,0ch
-	                mov   cx,tileStartX
-	                mov   dx,tileEndY
-	                dec   dx
-	drawBotBorder:  int   10h
-	                inc   cx
-	                cmp   cx,tileEndX
-	                jl    drawBotBorder
-
-	                
-
-	                popf
-	                popa
-	                ret
-drawTile endp
-end
+	POPF
+	POPA
+	RET
+drawTile ENDP
+END

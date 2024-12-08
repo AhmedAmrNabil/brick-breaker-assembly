@@ -1,28 +1,20 @@
-EXTRN Ball_X:WORD
-EXTRN Ball_Y:WORD
-EXTRN Ball_Pixels:WORD
+EXTRN BALL_X:WORD
+EXTRN BALL_Y:WORD
+PUBLIC drawBall
 
-
-PUBLIC Draw_Ball
 .MODEL SMALL
 .STACK 100h
 
+.DATA
+BALL_PIXELS equ 06h
+
 .CODE
-Draw_Ball PROC FAR
-
-
-  
-    MOV AH,00h  ;Move to graphic mode
-    MOV AL,13h
-    INT 10h
-
+drawBall PROC FAR
+    MOV AX,00h
 
     MOV CX,Ball_X   ;Mov the x,y for ball
     MOV DX,Ball_Y
     MOV AX,00h
-
-
-
 
     DRAW_HORIZONTAL_VERTICAL:
     MOV AH,0ch
@@ -32,18 +24,14 @@ Draw_Ball PROC FAR
     INC CX
     MOV AX,CX
     SUB AX,Ball_X
-    CMP AX,Ball_Pixels
+    CMP AX,BALL_PIXELS
     JNG DRAW_HORIZONTAL_VERTICAL   ;Loop for X-axis
-
-
 
     MOV CX,Ball_X
     INC DX
     MOV AX,DX
     SUB AX,Ball_Y
-    CMP AX,Ball_Pixels
+    CMP AX,BALL_PIXELS
     JNG DRAW_HORIZONTAL_VERTICAL   ;Loop for Y-axis
-
-
- Draw_Ball ENDP
- END
+drawBall ENDP
+END

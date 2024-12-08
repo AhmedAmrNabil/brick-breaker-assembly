@@ -1,15 +1,18 @@
-    EXTRN PADDLE_X:WORD              
-    EXTRN PADDLE_Y:WORD             
-    EXTRN PADDLE_WIDTH:WORD           
-    EXTRN PADDLE_HEIGHT:WORD           
-    EXTRN EDGE_WIDTH:WORD   
-    PUBLIC DRAW_PADDLE
+EXTRN PADDLE_X:WORD
+EXTRN PADDLE_Y:WORD
+PUBLIC drawPaddle
 
 .MODEL SMALL
 .STACK 100h
+
+.DATA
+PADDLE_WIDTH equ 60
+PADDLE_HEIGHT equ 10
+EDGE_WIDTH equ 2
+
 .CODE
-DRAW_PADDLE PROC FAR
-        MOV DX, PADDLE_Y             
+drawPaddle PROC FAR
+    MOV DX, PADDLE_Y             
     DRAW_ROW:
         PUSH DX                       
         MOV CX, PADDLE_X             
@@ -54,7 +57,7 @@ DRAW_PADDLE PROC FAR
         JL DRAW_ROW                    
 
         RET
-DRAW_PADDLE ENDP
+drawPaddle ENDP
 END
 
 
