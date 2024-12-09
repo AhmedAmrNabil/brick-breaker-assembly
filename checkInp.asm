@@ -6,44 +6,54 @@ PUBLIC checkInput
 .386
 .DATA
 	PADDLE_VEL_MAG EQU 5
+	MOVE_LEFT DW 0
+	MOVE_RIGHT DW 0
 
 .CODE
 checkInput PROC FAR
-	MOV AH, 01H			; check for charater in keyboard buffer
-	INT 16H
-	JNZ stopMoving				
-	MOV AH, 00h			; remove the charater from buffer
-	INT 16H
+	PUSHA                                                       ;push all regs to the stack
+	PUSHF                                                       ;push flag register to the stack
+	IN AL,60h 
 
 	; check for a or A to move left
-	CMP AL,'A'			
-	JE moveLeft
-	CMP AL,'a'
+	CMP AL,1EH			
 	JE moveLeft
 
 	; check for d or D to move right
-	CMP AL,'D'
+	CMP AL,20H
 	JE moveRight
-	CMP AL,'d'
-	JE moveRight
+
+	CMP AL, 1EH + 80H
+	JE stopMoveLeft
 	
-	; else stop moving
-stopMoving:
-	MOV PADDLE1_VEL_X, 0
+	CMP AL, 20H + 80H
+	JE stopMoveRight
+	JMP exit
+	
+moveLeft:
+	MOV MOVE_LEFT, -1*PADDLE_VEL_MAG
 	JMP exit
 
-moveLeft:
-	MOV AX, PADDLE_VEL_MAG
-	NEG AX
-	MOV PADDLE1_VEL_X, AX
+stopMoveLeft:
+	MOV MOVE_LEFT, 0
 	JMP exit
 
 moveRight:
-	MOV AX, PADDLE_VEL_MAG
-	MOV PADDLE1_VEL_X, AX
+	MOV MOVE_RIGHT, PADDLE_VEL_MAG
+	JMP exit
+
+stopMoveRight:
+	MOV MOVE_RIGHT, 0
 	JMP exit
 
 exit:
-	RET
+	MOV AX, MOVE_LEFT
+	ADD AX, MOVE_RIGHT
+	MOV PADDLE1_VEL_X, AX
+	MOV AL, 20h			;The non specific EOI (End Of Interrupt)
+	OUT 20h, AL
+	POPF
+	POPA
+	IRET
 checkInput ENDP
 END

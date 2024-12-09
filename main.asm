@@ -19,6 +19,43 @@ getSystemTime MACRO
 
 ENDM
 
+setIntteruptHandle MACRO
+;getting int09h interrupt vector handler
+	cli                       ;turn off interrupt flag
+	pusha
+;get the interrupt 09 address
+	mov   ax,3509h
+	int   21h
+
+;save the original interrupt address
+	mov   int9Off, bx
+	mov   int9Seg, es
+	popa
+
+;setting the new int 09h interrupt vector handler
+	push  ds
+	mov   ax,cs
+	mov   ds,ax               ;load the segment of the new interrupt
+	lea   dx,checkInput    ;load the offset of the new interrupt
+	mov   ax,2509h            ; int 21/25h at interrupt 09
+	int   21h
+	pop   ds
+	sti
+ENDM
+
+resetInterruptHandle MACRO
+	cli
+
+	mov  ax,int9Seg
+	mov  dx,int9Off
+	push ds
+	mov  ds,ax
+	mov  ax,2509h
+	int  21h
+	pop  ds
+
+	sti
+ENDM
 
 .MODEL small
 .386
@@ -27,8 +64,8 @@ ENDM
 .DATA
 	PADDLE_X dw ?
 	PADDLE_Y dw ?
-	PADDLE1_X dw 0
-	PADDLE2_X dw 160
+	PADDLE1_X dw 55
+	PADDLE2_X dw 215
 
 	BALL_X dw ?
 	BALL_Y dw ?
@@ -39,16 +76,21 @@ ENDM
 
 	PADDLE1_VEL_X dw 0
 
-	TIME DB 0
+	TIME DB 1
 
 	BRICKS_COLS EQU 8
 	BRICKS_COUNT EQU 48
 	PADDLE_VEL_MAG EQU 5
 
+	int9Seg DW ?
+	int9Off DW ?
+
 .CODE
 MAIN PROC FAR
 	MOV AX, @DATA
 	MOV DS, AX
+
+	setIntteruptHandle
 
 	; set video mode to 320x200 256-color mode
 	MOV AH, 0
@@ -109,7 +151,6 @@ printLoop2:
 
 
 gameLoop:
-	call checkInput
 	GetSystemTime
 	CMP DL, TIME
 	JE gameLoop
@@ -130,7 +171,9 @@ WaitForRetrace:
 	CALL drawSeparator
 	jmp gameLoop
 
+
 	; exit the program:
+	resetInterruptHandle
 	MOV AH, 4CH
 	INT 21h
 MAIN ENDP
