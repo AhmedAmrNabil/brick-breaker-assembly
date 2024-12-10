@@ -1,19 +1,20 @@
 EXTRN BALL_X:WORD
 EXTRN BALL_Y:WORD
 PUBLIC drawBall
+PUBLIC clearBall
 
 .MODEL SMALL
 .STACK 100h
 
 .DATA
-BALL_PIXELS equ 06h
+BALL_PIXELS equ 0Ah
 
 .CODE
 drawBall PROC FAR
     MOV AX,00h
 
-    MOV CX,Ball_X   ;Mov the x,y for ball
-    MOV DX,Ball_Y
+    MOV CX,BALL_X   ;Mov the x,y for ball
+    MOV DX,BALL_Y
     MOV AX,00h
 
     DRAW_HORIZONTAL_VERTICAL:
@@ -23,15 +24,44 @@ drawBall PROC FAR
     INT 10h    ; Draw the pixel
     INC CX
     MOV AX,CX
-    SUB AX,Ball_X
+    SUB AX,BALL_X
     CMP AX,BALL_PIXELS
-    JNG DRAW_HORIZONTAL_VERTICAL   ;Loop for X-axis
+    JL DRAW_HORIZONTAL_VERTICAL   ;Loop for X-axis
 
-    MOV CX,Ball_X
+    MOV CX,BALL_X
     INC DX
     MOV AX,DX
-    SUB AX,Ball_Y
+    SUB AX,BALL_Y
     CMP AX,BALL_PIXELS
-    JNG DRAW_HORIZONTAL_VERTICAL   ;Loop for Y-axis
+    JL DRAW_HORIZONTAL_VERTICAL   ;Loop for Y-axis
+    RET
 drawBall ENDP
+
+
+clearBall PROC FAR
+    MOV AX,00h
+
+    MOV CX,BALL_X   ;Mov the x,y for ball
+    MOV DX,BALL_Y
+    MOV AX,00h
+
+    clearHorizontalVertical:
+    MOV AH,0ch
+    MOV AL,00h
+    MOV BH,00h
+    INT 10h    ; Draw the pixel
+    INC CX
+    MOV AX,CX
+    SUB AX,BALL_X
+    CMP AX,BALL_PIXELS
+    JL clearHorizontalVertical  ;Loop for X-axis
+
+    MOV CX,BALL_X
+    INC DX
+    MOV AX,DX
+    SUB AX,BALL_Y
+    CMP AX,BALL_PIXELS
+    JL clearHorizontalVertical  ;Loop for Y-axis
+    RET
+clearBall ENDP
 END

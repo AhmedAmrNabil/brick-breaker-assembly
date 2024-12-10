@@ -3,3 +3,5 @@
 *.bat
 *.conf
 run.py
+.vscode
+.venv
