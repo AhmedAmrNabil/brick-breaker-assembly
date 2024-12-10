@@ -3,6 +3,7 @@ EXTRN drawTile:FAR
 EXTRN drawPaddle:FAR
 EXTRN clearPaddle:FAR
 EXTRN drawBall:FAR
+EXTRN clearBall:FAR
 EXTRN checkInput:FAR
 EXTRN movePaddle:FAR
 
