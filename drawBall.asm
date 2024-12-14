@@ -1,5 +1,6 @@
 EXTRN BALL_X:WORD
 EXTRN BALL_Y:WORD
+
 PUBLIC drawBall
 PUBLIC clearBall
 
@@ -7,7 +8,7 @@ PUBLIC clearBall
 .STACK 100h
 
 .DATA
-BALL_PIXELS equ 0Ah
+BALL_SIZE EQU 10
 
 .CODE
 drawBall PROC FAR
@@ -25,14 +26,14 @@ drawBall PROC FAR
     INC CX
     MOV AX,CX
     SUB AX,BALL_X
-    CMP AX,BALL_PIXELS
+    CMP AX,BALL_SIZE
     JL DRAW_HORIZONTAL_VERTICAL   ;Loop for X-axis
 
     MOV CX,BALL_X
     INC DX
     MOV AX,DX
     SUB AX,BALL_Y
-    CMP AX,BALL_PIXELS
+    CMP AX,BALL_SIZE
     JL DRAW_HORIZONTAL_VERTICAL   ;Loop for Y-axis
     RET
 drawBall ENDP
@@ -53,14 +54,14 @@ clearBall PROC FAR
     INC CX
     MOV AX,CX
     SUB AX,BALL_X
-    CMP AX,BALL_PIXELS
+    CMP AX,BALL_SIZE
     JL clearHorizontalVertical  ;Loop for X-axis
 
     MOV CX,BALL_X
     INC DX
     MOV AX,DX
     SUB AX,BALL_Y
-    CMP AX,BALL_PIXELS
+    CMP AX,BALL_SIZE
     JL clearHorizontalVertical  ;Loop for Y-axis
     RET
 clearBall ENDP
