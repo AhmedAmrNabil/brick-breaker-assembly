@@ -1,27 +1,28 @@
 EXTRN drawSeparator:FAR
 EXTRN drawTile:FAR
 EXTRN drawPaddle:FAR
-EXTRN clearPaddle:FAR
 EXTRN drawBall:FAR
 EXTRN clearBall:FAR
 EXTRN checkInput:FAR
-EXTRN movePaddle:FAR
 EXTRN moveBall:FAR
 EXTRN checkCollision:FAR
+EXTRN movePaddle1:FAR
+EXTRN movePaddle2:FAR
 
 PUBLIC PADDLE_X
 PUBLIC PADDLE1_X
+PUBLIC PADDLE1_VEL_X
+PUBLIC PADDLE2_X
+PUBLIC PADDLE2_VEL_X
 PUBLIC BALL_X
 PUBLIC BALL_Y
-PUBLIC PADDLE1_VEL_X
+PUBLIC BALL1_Y
 PUBLIC BALL_VELOCITY_X
 PUBLIC BALL_VELOCITY_Y
 
-
 getSystemTime MACRO
-                  MOV AH,2CH    ;get the system time
-                  INT 21H       ; CH = hour, CL = minute, DH = seconds, DL = 1/100s
-
+	MOV AH,2CH    ;get the system time
+	INT 21H       ; CH = hour, CL = minute, DH = seconds, DL = 1/100s
 ENDM
 
 setIntteruptHandle MACRO
@@ -67,21 +68,27 @@ ENDM
 
 .STACK 100h
 .DATA
+
 	PADDLE_X dw ?
-	PADDLE_Y dw ?
 	PADDLE1_X dw 55
 	PADDLE2_X dw 215
 
+	PADDLE1_VEL_X dw 0
+	PADDLE2_VEL_X dw 0
+
 	BALL_X dw ?
 	BALL_Y dw ?
-	BALL1_X dw 74
+	BALL1_X dw 75
 	BALL1_Y dw 150
-	BALL2_X dw 238
+	BALL2_X dw 240
 	BALL2_Y dw 150
 
-	PADDLE1_VEL_X dw 0
-	BALL_VELOCITY_X dw 05h
-	BALL_VELOCITY_Y dw 05h
+	BALL_VELOCITY_X dw ?
+	BALL_VELOCITY_Y dw ?
+	BALL1_VELOCITY_X dw 5
+	BALL1_VELOCITY_Y dw -5
+	BALL2_VELOCITY_X dw 5
+	BALL2_VELOCITY_Y dw -5
 
 	TIME DB 1
 
@@ -156,39 +163,52 @@ printLoop2:
 	MOV BALL_Y, AX
 	CALL drawBall
 
-
 gameLoop:
 	GetSystemTime
 	CMP DL, TIME
 	JE gameLoop
 	MOV TIME, DL
-    MOV AX, BALL1_X
+
+	MOV AX, BALL1_X
 	MOV BALL_X, AX
 	MOV AX, BALL1_Y
 	MOV BALL_Y, AX
-    call clearBall
-    call checkCollision
-    call moveBall
-	call drawBall
-    MOV AX, BALL_X
+
+	MOV AX, BALL1_VELOCITY_X
+	MOV BALL_VELOCITY_X, AX
+	MOV AX, BALL1_VELOCITY_Y
+	MOV BALL_VELOCITY_Y, AX
+
+	MOV AX, PADDLE1_X
+	MOV PADDLE_X, AX
+
+	CALL clearBall
+	CALL checkCollision
+	CALL moveBall
+	CALL drawBall
+
+	MOV AX, BALL_VELOCITY_X
+	MOV BALL1_VELOCITY_X, AX
+	MOV AX, BALL_VELOCITY_Y
+	MOV BALL1_VELOCITY_Y, AX
+
+	MOV AX, BALL_X
 	MOV BALL1_X, AX
 	MOV AX, BALL_Y
 	MOV BALL1_Y, AX
 
 WaitForVSync:
-    MOV DX, 03DAh         ; VGA Input Status Register 1
+	MOV DX, 03DAh         ; VGA Input Status Register 1
 WaitForRetrace:
-    IN AL, DX
-    TEST AL, 08H          ; Check the Vertical Retrace bit (bit 3)
-    JZ WaitForRetrace     ; Loop until retrace starts
+	IN AL, DX
+	TEST AL, 08H          ; Check the Vertical Retrace bit (bit 3)
+	JZ WaitForRetrace     ; Loop until retrace starts
 
-	CALL movePaddle
-
-
-
+	CALL movePaddle1
+	CALL movePaddle2
 	CALL drawSeparator
-	jmp gameLoop
 
+	JMP gameLoop
 
 	; exit the program:
 	resetInterruptHandle
