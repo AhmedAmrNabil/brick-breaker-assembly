@@ -6,12 +6,16 @@ EXTRN drawBall:FAR
 EXTRN clearBall:FAR
 EXTRN checkInput:FAR
 EXTRN movePaddle:FAR
+EXTRN moveBall:FAR
+EXTRN checkCollision:FAR
 
 PUBLIC PADDLE_X
 PUBLIC PADDLE1_X
 PUBLIC BALL_X
 PUBLIC BALL_Y
 PUBLIC PADDLE1_VEL_X
+PUBLIC BALL_VELOCITY_X
+PUBLIC BALL_VELOCITY_Y
 
 
 getSystemTime MACRO
@@ -76,6 +80,8 @@ ENDM
 	BALL2_Y dw 150
 
 	PADDLE1_VEL_X dw 0
+	BALL_VELOCITY_X dw 05h
+	BALL_VELOCITY_Y dw 05h
 
 	TIME DB 1
 
@@ -156,7 +162,18 @@ gameLoop:
 	CMP DL, TIME
 	JE gameLoop
 	MOV TIME, DL
-
+    MOV AX, BALL1_X
+	MOV BALL_X, AX
+	MOV AX, BALL1_Y
+	MOV BALL_Y, AX
+    call clearBall
+    call checkCollision
+    call moveBall
+	call drawBall
+    MOV AX, BALL_X
+	MOV BALL1_X, AX
+	MOV AX, BALL_Y
+	MOV BALL1_Y, AX
 
 WaitForVSync:
     MOV DX, 03DAh         ; VGA Input Status Register 1
