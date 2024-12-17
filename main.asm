@@ -8,6 +8,9 @@ EXTRN moveBall:FAR
 EXTRN checkCollision:FAR
 EXTRN movePaddle1:FAR
 EXTRN movePaddle2:FAR
+EXTRN mainMenu:FAR
+EXTRN choice:BYTE
+
 
 PUBLIC PADDLE_X
 PUBLIC PADDLE1_X
@@ -19,6 +22,7 @@ PUBLIC BALL_Y
 PUBLIC BALL1_Y
 PUBLIC BALL_VELOCITY_X
 PUBLIC BALL_VELOCITY_Y
+
 
 getSystemTime MACRO
 	MOV AH,2CH    ;get the system time
@@ -103,7 +107,19 @@ ENDM
 MAIN PROC FAR
 	MOV AX, @DATA
 	MOV DS, AX
+ menuLoop:
+    CALL mainMenu
 
+    CMP choice, '1'          
+    JE playGame
+    CMP choice, '2'      
+    JE chatOption
+    CMP choice, '3'          
+    JE exitGame
+
+   JMP menuLoop
+
+  playGame:
 	setIntteruptHandle
 
 	; set video mode to 320x200 256-color mode
@@ -212,6 +228,8 @@ WaitForRetrace:
 
 	; exit the program:
 	resetInterruptHandle
+chatOption:  ;will be added 
+exitGame:
 	MOV AH, 4CH
 	INT 21h
 MAIN ENDP
