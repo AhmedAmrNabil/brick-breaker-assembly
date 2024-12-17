@@ -2,134 +2,252 @@ EXTRN BALL_X:WORD
 EXTRN BALL_Y:WORD
 EXTRN BALL_VELOCITY_X:WORD
 EXTRN BALL_VELOCITY_Y:WORD
+EXTRN PADDLE_X:WORD
 EXTRN clearTile:FAR
 
 PUBLIC checkCollision
 
-getColor MACRO x, y
-    MOV AH, 0Dh       ; Function: Read Pixel
-    MOV BH, 0         ; Video page (usually 0)
-    MOV CX, x         ; X-coordinate (column)
-    MOV DX, y         ; Y-coordinate (row)
-    INT 10h           ; BIOS video interrupt
-    ; The color is now in AL
-ENDM
-
 .MODEL SMALL
+.STACK 100h
+
 .386
 
 .DATA
-BALL_PIXELS EQU 0Ah        ; Diameter of the ball
-WINDOW_WIDTH EQU 158       ; Play area width
-WINDOW_HEIGHT EQU 0c8h     ; Play area height (200 in hex)
+SCREEN_WIDTH  EQU 160
+SCREEN_HEIGHT EQU 200
+BALL_SIZE     EQU 10
+PADDLE_Y      EQU 180
+PADDLE_WIDTH EQU 50
+PADDLE_HEIGHT EQU 10
+TILE_WIDTH  equ 20
+TILE_HEIGHT equ 10
 
 .CODE
+getPixelColor PROC FAR
+    MOV AX, 0
+
+    MOV AH, 0Dh
+    INT 10h
+
+    MOV AH, 0
+
+    RET
+getPixelColor ENDP
+
 checkCollision PROC FAR
-    pusha                ; Save all registers
-
-    ; ==== Handle Border Collisions ====
-    ; Left Border Collision
-    CMP BALL_X, 0        
-    JGE checkRightBorder 
-    NEG BALL_VELOCITY_X  
-    ;MOV BALL_X, 0        
-
-checkRightBorder:
-    MOV AX, WINDOW_WIDTH
-    SUB AX, BALL_PIXELS
-    CMP BALL_X, AX       
-    JLE checkTopBorder   
-    NEG BALL_VELOCITY_X  
-    ;MOV BALL_X, AX       
-
-checkTopBorder:
-    CMP BALL_Y, 0        
-    JGE checkBottomBorder
-    NEG BALL_VELOCITY_Y  
-    ;MOV BALL_Y, 0        ; Keep ball inside the top border
-
-checkBottomBorder:
-    MOV AX, WINDOW_HEIGHT
-    SUB AX, BALL_PIXELS
-    CMP BALL_Y, AX       
-    JLE checkBrickCollision 
-    NEG BALL_VELOCITY_Y  
-   ; MOV BALL_Y, AX       ; Keep ball inside the bottom border
-
-    ; ==== Brick Collision Check ====
-checkBrickCollision:
-    ; Top of the ball
-    MOV AX, BALL_X
-    ADD AX, 5            ; Center of the ball (X)
-    MOV BX, BALL_Y
-    getColor AX, BX
-    CMP AL, 0            ; Check if the pixel is not empty
-    JNZ handleTopCollision
-
-    ; Left of the ball
     MOV AX, BALL_X
     MOV BX, BALL_Y
-    ADD BX, 5            ; Center of the ball (Y)
-    getColor AX, BX
-    CMP AL, 0
-    JNZ handleLeftCollision
 
-    ; Bottom of the ball
-    MOV AX, BALL_X
-    ADD AX, 5
+; Check left boundary
+LeftBoundary:
+    CMP AX, 0
+    JG  RightBoundary
+    NEG BALL_VELOCITY_X
+    JMP EndCheck
+
+; Check right boundary
+RightBoundary:
+    CMP AX, SCREEN_WIDTH - BALL_SIZE
+    JL  TopBoundary
+    NEG BALL_VELOCITY_X
+    JMP EndCheck
+
+; Check top boundary
+TopBoundary:
     MOV BX, BALL_Y
-    ADD BX, 0Ah          ; Bottom edge of the ball
-    getColor AX, BX
-    CMP AL, 0
-    JNZ handleBottomCollision
+    CMP BX, 0 
+    JG  BottomBoundary
+    NEG BALL_VELOCITY_Y
+    JMP EndCheck
 
-    ; Right of the ball
+; Will be removed later for game over
+; Check bottom boundary
+BottomBoundary:
+    CMP BX, SCREEN_HEIGHT - BALL_SIZE
+    JL  PaddleCollisionTop
+    NEG BALL_VELOCITY_Y
+    JMP EndCheck
+
+; Check if ball collided with paddle from the top of the paddle
+PaddleCollisionTop:
+    MOV AX, BALL_Y
+    ADD AX, BALL_SIZE
+    MOV BX, PADDLE_Y
+
+    CMP AX, BX
+    JG PaddleCollisionX
+    JL TopAndBottomEdgeColor
+
     MOV AX, BALL_X
-    ADD AX, 0Ah          ; Right edge of the ball
-    MOV BX, BALL_Y
-    ADD BX, 5
-    getColor AX, BX 
-    CMP AL, 0
-    JNZ handleRightCollision
+    ADD AX, BALL_SIZE
+    MOV BX, PADDLE_X
+    CMP AX, BX
+    JL EndCheck
 
-    JMP skipCollisionCheck ; If no collision, skip
-
-; ==== Collision Handlers ====
-handleTopCollision:
-    NEG BALL_VELOCITY_Y  ; Reverse vertical velocity for top collision
-    JMP clearBrick
-
-handleBottomCollision:
-    NEG BALL_VELOCITY_Y  ; Reverse vertical velocity for bottom collision
-    JMP clearBrick
-
-handleLeftCollision:
-    NEG BALL_VELOCITY_X  ; Reverse horizontal velocity for left collision
-    JMP clearBrick
-
-handleRightCollision:
-    NEG BALL_VELOCITY_X  ; Reverse horizontal velocity for right collision
-
-clearBrick:
-    ; Convert ball position to brick grid coordinates
     MOV AX, BALL_X
-    MOV BL, 20           ; Grid width factor
-    DIV BL
-    MOV CL, AL           ; Grid X coordinate in CL
+    SUB AX, BALL_SIZE
+    JNC skipReset1
+    MOV AX, 0
+skipReset1:
+    MOV BX, PADDLE_X
+    ADD BX, PADDLE_WIDTH
+    CMP AX, BX
+    JG EndCheck
+
+    NEG BALL_VELOCITY_Y
+    JMP EndCheck
+
+; Check if ball collided with paddle from the sides of the paddle
+PaddleCollisionX:
+    MOV AX, BALL_X
+    ADD AX, BALL_SIZE
+    MOV BX, PADDLE_X
+    CMP AX, BX
+    JE PaddleNegX
+
+    MOV AX, BALL_X
+    SUB AX, BALL_SIZE
+    JNC skipReset2
+    MOV AX, 0
+skipReset2:
+    MOV BX, PADDLE_X
+    ADD BX, PADDLE_WIDTH
+    CMP AX, BX
+    JNE EndCheck
+
+PaddleNegX:
+    NEG BALL_VELOCITY_X
+    JMP EndCheck
+
+; Check the color of the pixel at the top and bottom edges of the ball
+TopAndBottomEdgeColor:
+    MOV CX, BALL_X
+    MOV DX, BALL_Y
+    DEC DX
+    CALL getPixelColor
+    CMP AX, 0
+    JNE BallCollidedFromTop
+
+    MOV CX, BALL_X
+    MOV DX, BALL_Y
+    ADD DX, BALL_SIZE
+    ADD DX, 1
+    CALL getPixelColor
+    CMP AX, 0
+    JNE BallCollidedFromBottom
+
+; Check the color of the pixel at the left and right edges of the ball
+LeftAndRightEdgeColor:
+    MOV CX, BALL_X
+    DEC CX
+    MOV DX, BALL_Y
+    CALL getPixelColor
+    CMP AX, 0
+    JNE BallCollidedFromLeft
+
+    MOV CX, BALL_X
+    ADD CX, BALL_SIZE
+    INC CX
+    MOV DX, BALL_Y
+    CALL getPixelColor
+    CMP AX, 0
+    JNE BallCollidedFromRight
+
+    JMP EndCheck
+
+; Clear the tile above the ball
+BallCollidedFromTop:
+    NEG BALL_VELOCITY_Y
+
+    MOV AX, BALL_X
+    MOV CX, TILE_WIDTH
+    DIV CL
+    MOV AH, 0
+    MOV DX, AX
 
     MOV AX, BALL_Y
-    MOV BL, 10           ; Grid height factor
-    DIV BL
-    MOV CH, AL           ; Grid Y coordinate in CH
+    SUB AX, TILE_HEIGHT
+    INC AX
+    MOV CX, TILE_HEIGHT
+    DIV CL
+    MOV AH, 0
+    MOV AH, AL
+    MOV AL, DL
 
-    ; Call clearTile with grid coordinates (CL = X, CH = Y)
-    MOV AL, CL
-    MOV AH, CH
     CALL clearTile
 
-skipCollisionCheck:
-    popa                 ; Restore all registers
-    RET
+    JMP LeftAndRightEdgeColor
 
+; Clear the tile below the ball
+BallCollidedFromBottom:
+    NEG BALL_VELOCITY_Y
+
+    MOV AX, BALL_X
+    MOV CX, TILE_WIDTH
+    DIV CL
+    MOV AH, 0
+    MOV DX, AX
+
+    MOV AX, BALL_Y
+    ADD AX, TILE_HEIGHT
+    DEC AX
+    MOV CX, TILE_HEIGHT
+    DIV CL
+    MOV AH, 0
+    MOV AH, AL
+    MOV AL, DL
+
+    CALL clearTile
+
+    JMP LeftAndRightEdgeColor
+
+; Clear the tile to the left of the ball
+BallCollidedFromLeft:
+    NEG BALL_VELOCITY_X
+
+    MOV AX, BALL_X
+    SUB AX, TILE_WIDTH
+    INC AX
+    MOV CX, TILE_WIDTH
+    DIV CL
+    MOV AH, 0
+    MOV DX, AX
+
+    MOV AX, BALL_Y
+    MOV CX, TILE_HEIGHT
+    DIV CL
+    MOV AH, 0
+    MOV AH, AL
+    MOV AL, DL
+
+    CALL clearTile
+
+    JMP EndCheck
+
+; Clear the tile to the right of the ball
+BallCollidedFromRight:
+    NEG BALL_VELOCITY_X
+
+    MOV AX, BALL_X
+    ADD AX, TILE_WIDTH
+    DEC AX
+    MOV CX, TILE_WIDTH
+    DIV CL
+    MOV AH, 0
+    MOV DX, AX
+
+    MOV AX, BALL_Y
+    MOV CX, TILE_HEIGHT
+    DIV CL
+    MOV AH, 0
+    MOV AH, AL
+    MOV AL, DL
+
+    CALL clearTile
+
+    JMP EndCheck
+
+EndCheck:
+    RET
 checkCollision ENDP
 END
