@@ -15,7 +15,7 @@ PUBLIC checkCollision
 .DATA
 SCREEN_WIDTH  EQU 160
 SCREEN_HEIGHT EQU 200
-BALL_SIZE     EQU 10
+BALL_SIZE     EQU 6
 PADDLE_Y      EQU 180
 PADDLE_WIDTH EQU 50
 PADDLE_HEIGHT EQU 10
@@ -75,8 +75,7 @@ PaddleCollisionTop:
     MOV BX, PADDLE_Y
 
     CMP AX, BX
-    JG PaddleCollisionX
-    JL TopAndBottomEdgeColor
+    JL TopEdgeColor
 
     MOV AX, BALL_X
     ADD AX, BALL_SIZE
@@ -100,13 +99,23 @@ skipReset1:
 ; Check if ball collided with paddle from the sides of the paddle
 PaddleCollisionX:
     MOV AX, BALL_X
-    ADD AX, BALL_SIZE
+    ADD AX, BALL_SIZE / 2
+    MOV BX, PADDLE_X
+    ADD BX, PADDLE_WIDTH / 2
+    CMP AX, BX
+    JLE CheckPaddleLeft
+    JG CheckPaddleRight
+
+CheckPaddleLeft:
+    MOV AX, BALL_X
+    ADD AX, BALL_SIZE / 2
     MOV BX, PADDLE_X
     CMP AX, BX
     JE PaddleNegX
 
+CheckPaddleRight:
     MOV AX, BALL_X
-    SUB AX, BALL_SIZE
+    SUB AX, BALL_SIZE / 2
     JNC skipReset2
     MOV AX, 0
 skipReset2:
@@ -120,7 +129,7 @@ PaddleNegX:
     JMP EndCheck
 
 ; Check the color of the pixel at the top and bottom edges of the ball
-TopAndBottomEdgeColor:
+TopEdgeColor:
     MOV CX, BALL_X
     MOV DX, BALL_Y
     DEC DX
@@ -128,6 +137,7 @@ TopAndBottomEdgeColor:
     CMP AX, 0
     JNE BallCollidedFromTop
 
+BottomEdgeColor:
     MOV CX, BALL_X
     MOV DX, BALL_Y
     ADD DX, BALL_SIZE
@@ -137,7 +147,7 @@ TopAndBottomEdgeColor:
     JNE BallCollidedFromBottom
 
 ; Check the color of the pixel at the left and right edges of the ball
-LeftAndRightEdgeColor:
+LeftEdgeColor:
     MOV CX, BALL_X
     DEC CX
     MOV DX, BALL_Y
@@ -145,6 +155,7 @@ LeftAndRightEdgeColor:
     CMP AX, 0
     JNE BallCollidedFromLeft
 
+RightEdgeColor:
     MOV CX, BALL_X
     ADD CX, BALL_SIZE
     INC CX
@@ -176,7 +187,7 @@ BallCollidedFromTop:
 
     CALL clearTile
 
-    JMP LeftAndRightEdgeColor
+    JMP BottomEdgeColor
 
 ; Clear the tile below the ball
 BallCollidedFromBottom:
@@ -199,7 +210,7 @@ BallCollidedFromBottom:
 
     CALL clearTile
 
-    JMP LeftAndRightEdgeColor
+    JMP LeftEdgeColor
 
 ; Clear the tile to the left of the ball
 BallCollidedFromLeft:
@@ -222,7 +233,7 @@ BallCollidedFromLeft:
 
     CALL clearTile
 
-    JMP EndCheck
+    JMP RightEdgeColor
 
 ; Clear the tile to the right of the ball
 BallCollidedFromRight:
