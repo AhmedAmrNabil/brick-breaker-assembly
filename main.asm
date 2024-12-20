@@ -3,22 +3,25 @@ EXTRN drawTile:FAR
 EXTRN drawPaddle:FAR
 EXTRN drawBall:FAR
 EXTRN clearBall:FAR
+EXTRN clearPaddle:FAR
 EXTRN checkInput:FAR
 EXTRN moveBall:FAR
 EXTRN checkCollision:FAR
 EXTRN movePaddle1:FAR
-EXTRN movePaddle2:FAR
+EXTRN mainMenu:FAR
+EXTRN choice:BYTE
+
 
 PUBLIC PADDLE_X
 PUBLIC PADDLE1_X
 PUBLIC PADDLE1_VEL_X
 PUBLIC PADDLE2_X
-PUBLIC PADDLE2_VEL_X
 PUBLIC BALL_X
 PUBLIC BALL_Y
 PUBLIC BALL1_Y
 PUBLIC BALL_VELOCITY_X
 PUBLIC BALL_VELOCITY_Y
+
 
 getSystemTime MACRO
 	MOV AH,2CH    ;get the system time
@@ -70,11 +73,11 @@ ENDM
 .DATA
 
 	PADDLE_X dw ?
-	PADDLE1_X dw 55
-	PADDLE2_X dw 215
+	PADDLE1_X dw 50
+	PADDLE2_X dw 210
+	PADDLE2_X2 dw 210
 
 	PADDLE1_VEL_X dw 0
-	PADDLE2_VEL_X dw 0
 
 	BALL_X dw ?
 	BALL_Y dw ?
@@ -99,11 +102,81 @@ ENDM
 	int9Seg DW ?
 	int9Off DW ?
 
+	COM EQU 03F8h
 .CODE
+
+SendPaddle PROC FAR
+    ; Check if the Transmitter Holding Register is Empty
+	mov               dx,COM+5        ; Line Status Register
+	in                al,dx           ;Read Line Status
+	test              al,00100000b
+	jz                exitSendPaddle       ;Recieve if not empty
+
+	mov               dx,COM          ; Transmit data register
+	mov               al, byte ptr PADDLE1_X       ; put the data into al
+	out               dx,al           ; sending the data
+
+exitSendPaddle:
+    RET
+SendPaddle ENDP
+
+ReceivePaddle PROC FAR
+    mov dx,COM+5        ;check if data is ready
+	in al,dx
+	test al,1
+	jz exitRecievePaddle        ;if not check for sending
+
+
+	mov dx,COM
+	in al,dx           ;read data from reg
+	MOV AH, 0
+    ADD AX, 160          
+	MOV PADDLE2_X2, AX
+
+exitRecievePaddle:
+    RET
+ReceivePaddle ENDP
+
 MAIN PROC FAR
 	MOV AX, @DATA
 	MOV DS, AX
 
+	       ; Set divisor Latch Acess bit
+	mov dx,COM+3
+	mov ax,10000000b
+	out dx,al
+
+;Set LSB of the Baud Rate Divisor Latch register
+	mov dx,COM
+	mov al,0ch          ;9600 baud rate
+	out dx,al
+
+;Set MSB of the Baud Rate Divisor Latch register
+	mov dx,COM+1
+	mov al,00h
+	out dx,al
+
+;Set Port config
+; transrecieve buffer,set break disabled, even parity, one stop bit, 8 bit word
+	mov dx,COM+3
+	mov ax,00011011b
+	out dx,al
+
+menuLoop:
+    CALL mainMenu
+
+    CMP choice, '1'          
+    JE playGame
+    CMP choice, '2'      
+    JE chatOption
+    CMP choice, '3'          
+    JE exitGame
+
+  JMP menuLoop
+
+
+
+  playGame:
 	setIntteruptHandle
 
 	; set video mode to 320x200 256-color mode
@@ -162,24 +235,31 @@ printLoop2:
 	MOV AX, BALL2_Y
 	MOV BALL_Y, AX
 	CALL drawBall
-
 gameLoop:
+	CALL SendPaddle
+	CALL ReceivePaddle
 	GetSystemTime
 	CMP DL, TIME
 	JE gameLoop
 	MOV TIME, DL
 
+
+
 	MOV AX, BALL1_X
 	MOV BALL_X, AX
 	MOV AX, BALL1_Y
 	MOV BALL_Y, AX
-
+  
 	MOV AX, BALL1_VELOCITY_X
 	MOV BALL_VELOCITY_X, AX
 	MOV AX, BALL1_VELOCITY_Y
 	MOV BALL_VELOCITY_Y, AX
 
 	MOV AX, PADDLE1_X
+	MOV PADDLE_X, AX
+
+
+	MOV AX, PADDLE2_X
 	MOV PADDLE_X, AX
 
 	CALL clearBall
@@ -205,14 +285,33 @@ WaitForRetrace:
 	JZ WaitForRetrace     ; Loop until retrace starts
 
 	CALL movePaddle1
-	CALL movePaddle2
+
+	MOV AX, PADDLE2_X
+	CMP AX, PADDLE2_X2
+	JE gameLoop
+
+	MOV AX, PADDLE2_X
+	MOV PADDLE_X, AX
+	CALL clearPaddle
+
+	MOV AX,PADDLE2_X2
+	MOV PADDLE2_X, AX
+	MOV PADDLE_X, AX
+	CALL drawPaddle
+
 	CALL drawSeparator
 
 	JMP gameLoop
 
 	; exit the program:
 	resetInterruptHandle
+chatOption:  ;will be added 
+exitGame:
 	MOV AH, 4CH
 	INT 21h
 MAIN ENDP
 END MAIN
+
+
+
+
