@@ -17,10 +17,11 @@ SCREEN_WIDTH  EQU 160
 SCREEN_HEIGHT EQU 200
 BALL_SIZE     EQU 10
 PADDLE_Y      EQU 180
-PADDLE_WIDTH EQU 50
+PADDLE_WIDTH EQU 40
 PADDLE_HEIGHT EQU 10
 TILE_WIDTH  equ 20
 TILE_HEIGHT equ 10
+BALL_VELOCITY_MAG equ 5
 
 .CODE
 getPixelColor PROC FAR
@@ -33,6 +34,61 @@ getPixelColor PROC FAR
 
     RET
 getPixelColor ENDP
+
+checkPaddleCollision PROC FAR
+    MOV AX, BALL_Y
+    ADD AX, BALL_SIZE
+    CMP AX, PADDLE_Y
+    JL  endCheckPaddle
+    JE checkPaddleX
+    RET
+checkPaddleX:
+    MOV AX, BALL_X
+    ADD AX,BALL_SIZE
+    CMP AX, PADDLE_X
+    JL  endCheckPaddle
+    MOV AX, PADDLE_X
+    ADD AX, PADDLE_WIDTH
+    CMP AX, BALL_X
+    JL  endCheckPaddle
+    
+    MOV AX, BALL_X
+    ADD AX, BALL_SIZE/2
+    MOV BX, PADDLE_X
+    ADD BX,10
+    CMP AX,BX
+    JL farLeft
+    ADD BX,10
+    CMP AX,BX
+    JL nearLeft
+    ADD BX,10
+    CMP AX,BX
+    JL nearRight
+    JMP farRight
+    RET
+
+nearLeft:
+    MOV BALL_VELOCITY_X, -BALL_VELOCITY_MAG
+    MOV BALL_VELOCITY_Y, -BALL_VELOCITY_MAG*2
+    RET
+farLeft:
+    MOV BALL_VELOCITY_X, -BALL_VELOCITY_MAG*2
+    MOV BALL_VELOCITY_Y, -BALL_VELOCITY_MAG
+    RET
+
+nearRight:
+    MOV BALL_VELOCITY_X, BALL_VELOCITY_MAG
+    MOV BALL_VELOCITY_Y, -BALL_VELOCITY_MAG*2
+    RET
+
+farRight:
+    MOV BALL_VELOCITY_X, BALL_VELOCITY_MAG*2
+    MOV BALL_VELOCITY_Y, -BALL_VELOCITY_MAG
+
+    RET
+endCheckPaddle:
+    RET
+checkPaddleCollision ENDP
 
 checkCollision PROC FAR
     MOV AX, BALL_X
@@ -64,60 +120,18 @@ TopBoundary:
 ; Check bottom boundary
 BottomBoundary:
     CMP BX, SCREEN_HEIGHT - BALL_SIZE
-    JL  PaddleCollisionTop
+    JL  paddleCollision
     NEG BALL_VELOCITY_Y
     JMP EndCheck
 
 ; Check if ball collided with paddle from the top of the paddle
-PaddleCollisionTop:
+
+paddleCollision:
     MOV AX, BALL_Y
-    ADD AX, BALL_SIZE
-    MOV BX, PADDLE_Y
-
-    CMP AX, BX
-    JG PaddleCollisionX
+    CMP AX, 70
     JL TopAndBottomEdgeColor
-
-    MOV AX, BALL_X
-    ADD AX, BALL_SIZE
-    MOV BX, PADDLE_X
-    CMP AX, BX
-    JL EndCheck
-
-    MOV AX, BALL_X
-    SUB AX, BALL_SIZE
-    JNC skipReset1
-    MOV AX, 0
-skipReset1:
-    MOV BX, PADDLE_X
-    ADD BX, PADDLE_WIDTH
-    CMP AX, BX
-    JG EndCheck
-
-    NEG BALL_VELOCITY_Y
-    JMP EndCheck
-
-; Check if ball collided with paddle from the sides of the paddle
-PaddleCollisionX:
-    MOV AX, BALL_X
-    ADD AX, BALL_SIZE
-    MOV BX, PADDLE_X
-    CMP AX, BX
-    JE PaddleNegX
-
-    MOV AX, BALL_X
-    SUB AX, BALL_SIZE
-    JNC skipReset2
-    MOV AX, 0
-skipReset2:
-    MOV BX, PADDLE_X
-    ADD BX, PADDLE_WIDTH
-    CMP AX, BX
-    JNE EndCheck
-
-PaddleNegX:
-    NEG BALL_VELOCITY_X
-    JMP EndCheck
+    CALL checkPaddleCollision
+    RET
 
 ; Check the color of the pixel at the top and bottom edges of the ball
 TopAndBottomEdgeColor:
@@ -250,4 +264,5 @@ BallCollidedFromRight:
 EndCheck:
     RET
 checkCollision ENDP
+
 END
