@@ -1,6 +1,7 @@
 EXTRN drawTile:FAR
 EXTRN drawPaddle:FAR
 EXTRN drawBall:FAR
+EXTRN drawColoredTile:FAR
 EXTRN clearBall:FAR
 EXTRN clearPaddle:FAR
 EXTRN checkInput:FAR
@@ -30,6 +31,7 @@ PUBLIC GAME_EXIT_FLAG
 getSystemTime MACRO
 	MOV AH,2CH    ;get the system time
 	INT 21H       ; CH = hour, CL = minute, DH = seconds, DL = 1/100s
+
 ENDM
 
 setIntteruptHandle MACRO
@@ -73,6 +75,21 @@ ENDM
 
 initGame MACRO
 	; set video mode to 320x200 256-color mode
+
+	MOV AH, 00h
+	INT 1Ah
+	MOV AX,CX
+	SHL EAX, 16
+	MOV AX,DX
+	MOV SEED, EAX
+	MUL EAX
+
+	SHR EAX, 15
+	AND EAX,00000003h
+	ADD EAX,2
+	MOV POWERUP_COUNT,AL
+
+
 	MOV AH, 0
 	MOV AL, 13h
 	INT 10h
@@ -113,6 +130,23 @@ printLoop2:
 	INC DX
 	CMP DX, BRICKS_COUNT
 	JL printLoop2
+	
+
+	MOV CL, POWERUP_COUNT
+powerupLoop1:
+	PUSH CX
+	CALL LCG
+	MOV EAX,SEED
+	MOV ECX,48
+	XOR EDX,EDX
+	DIV ECX
+	MOV AX,DX
+	MOV CL,8
+	DIV CL
+	XCHG AL, AH
+	CALL drawColoredTile
+	POP CX
+	LOOP powerupLoop1	
 
 	; draw the paddle (player 1)
 	MOV AX, PADDLE1_X
@@ -169,6 +203,7 @@ ENDM
 	BALL1_VELOCITY_X dw 2
 	BALL1_VELOCITY_Y dw -1
 	GAME_EXIT_FLAG db 0
+	POWERUP_COUNT db 0
 
 	CLEAR_TILE_OFFSET db 8
 
@@ -180,9 +215,29 @@ ENDM
 
 	int9Seg DW ?
 	int9Off DW ?
+	SEED DD 5970917
+	MULTIPLIER EQU 22695477	
+	INCREMENT EQU 1
+	MODULUS EQU 2147483647
 
 	COM EQU 03F8h
 .CODE
+
+LCG PROC FAR
+	PUSHA
+	MOV EAX, SEED
+	MOV EBX, MULTIPLIER
+	MUL EBX
+	ADD EAX, INCREMENT
+	MOV SEED, EAX
+	MOV EDX, 0
+	MOV EBX,MODULUS
+	DIV EBX
+	MOV SEED, EDX
+	MOV EAX, EDX
+	POPA
+	RET
+LCG ENDP
 
 SendAll PROC FAR
 
