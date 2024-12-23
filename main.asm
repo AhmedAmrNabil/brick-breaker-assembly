@@ -85,7 +85,8 @@ ENDM
 	BALL1_Y dw 150
 	BALL2_X dw 240
 	BALL2_Y dw 150
-
+	BaLL2_Xrec dw 240
+	BaLL2_Yrec dw 150
 	BALL_VELOCITY_X dw ?
 	BALL_VELOCITY_Y dw ?
 	BALL1_VELOCITY_X dw 5
@@ -107,6 +108,7 @@ ENDM
 
 SendPaddle PROC FAR
     ; Check if the Transmitter Holding Register is Empty
+	
 	mov               dx,COM+5        ; Line Status Register
 	in                al,dx           ;Read Line Status
 	test              al,00100000b
@@ -114,11 +116,13 @@ SendPaddle PROC FAR
 
 	mov               dx,COM          ; Transmit data register
 	mov               al, byte ptr PADDLE1_X       ; put the data into al
-	out               dx,al           ; sending the data
+	mov 			  ah,1
+	out               dx,ax           ; sending the data
 
 exitSendPaddle:
     RET
 SendPaddle ENDP
+
 
 ReceivePaddle PROC FAR
     mov dx,COM+5        ;check if data is ready
@@ -128,20 +132,98 @@ ReceivePaddle PROC FAR
 
 
 	mov dx,COM
-	in al,dx           ;read data from reg
+	in ax,dx           ;read data from reg
+	cmp ah,1
+	jnz exitRecievePaddle
 	MOV AH, 0
-    ADD AX, 160          
+    ADD AX, 160 
 	MOV PADDLE2_X2, AX
-
 exitRecievePaddle:
     RET
 ReceivePaddle ENDP
+
+
+SendBall_X PROC FAR
+  ;check_X:
+	mov               dx,COM+5        ; Line Status Register
+	in                al,dx           ;Read Line Status
+	test              al,00100000b
+	jz                exit_x       ;Recieve if not empty
+
+	mov               dx,COM         ; Transmit data register
+    mov               al, byte ptr BALL1_X       ; put the data into al
+	mov				  ah,2
+	out               dx,ax           ; sending the data
+exit_x:
+RET
+SendBall_X ENDP
+
+
+
+
+;Rec Ball_x
+
+RecieveBall_X PROC FAR
+
+	mov dx,COM+5        ;check if data is ready
+	in al,dx
+	test al,1
+	jz exitRecieveBall_X        ;if not check for sending
+	mov dx,COM
+	in ax,dx           ;read data from reg
+	cmp ah,2
+	jne exitRecieveBall_X
+	MOV AH, 0
+    ADD AX, 160          
+	MOV BaLL2_Xrec, AX
+
+exitRecieveBall_X:
+RET
+RecieveBall_X ENDP
+
+
+SendBall_Y PROC FAR
+;check_Y:
+	mov               dx,COM+5        ; Line Status Register
+	in                al,dx           ;Read Line Status
+	test              al,00100000b
+	jz                exitSendBall_Y       ;Recieve if not empty
+
+	mov               dx,COM          ; Transmit data register
+    mov               al, byte ptr BALL1_Y       ; put the data into al
+	mov				  ah,3
+	out               dx,ax           ; sending the data
+exitSendBall_Y:
+RET
+SendBall_Y ENDP
+
+
+
+;Rec Ball_y
+
+RecieveBall_Y PROC FAR
+	 mov dx,COM+5        ;check if data is ready
+	in al,dx
+	test al,1
+	jz exitRecieveBall_Y        ;if not check for sending
+	
+	mov dx,COM
+	in ax,dx           ;read data from reg
+	cmp ah,3
+	jne exitRecieveBall_Y
+	MOV AH, 0
+	MOV BaLL2_Yrec, AX
+
+exitRecieveBall_Y:
+RET
+RecieveBall_Y ENDP
+
 
 MAIN PROC FAR
 	MOV AX, @DATA
 	MOV DS, AX
 
-	       ; Set divisor Latch Acess bit
+	; Set divisor Latch Acess bit
 	mov dx,COM+3
 	mov ax,10000000b
 	out dx,al
@@ -236,32 +318,40 @@ printLoop2:
 	MOV BALL_Y, AX
 	CALL drawBall
 gameLoop:
-	CALL SendPaddle
-	CALL ReceivePaddle
+;CALL SendPaddle
+	; CALL SendBall_Y
+	; mov cx,100
+	; check_z:
+	; dec cx
+	; jnz check_z
+	; CALL RecieveBall_Y
+	CALL SendBall_X
+	mov cx,100
+	check_z:
+	dec cx
+	jnz check_z
+	;CALL ReceivePaddle
+	CALL RecieveBall_X
+
+
 	GetSystemTime
 	CMP DL, TIME
 	JE gameLoop
 	MOV TIME, DL
 
-
-
+	
 	MOV AX, BALL1_X
 	MOV BALL_X, AX
 	MOV AX, BALL1_Y
 	MOV BALL_Y, AX
-  
 	MOV AX, BALL1_VELOCITY_X
 	MOV BALL_VELOCITY_X, AX
 	MOV AX, BALL1_VELOCITY_Y
 	MOV BALL_VELOCITY_Y, AX
-
 	MOV AX, PADDLE1_X
-	MOV PADDLE_X, AX
-
-
-	MOV AX, PADDLE2_X
-	MOV PADDLE_X, AX
-
+	; MOV PADDLE_X, AX
+	; MOV AX, PADDLE2_X
+	; MOV PADDLE_X, AX
 	CALL clearBall
 	CALL checkCollision
 	CALL moveBall
@@ -277,6 +367,27 @@ gameLoop:
 	MOV AX, BALL_Y
 	MOV BALL1_Y, AX
 
+	MOV AX,BALL2_X
+	MOV BALL_X,AX
+	MOV AX,BALL2_Y
+	MOV BALL_Y,AX
+	CALL clearBall
+
+
+    MOV AX,BaLL2_Xrec
+	MOV BALL2_X, AX
+	MOV BALL_X, AX
+	MOV AX,BaLL2_Yrec
+	MOV BALL2_Y, AX
+	MOV BALL_Y, AX
+	CALL drawBall
+
+	; MOV AX, BALL_X
+	; MOV BALL2_X, AX
+	; MOV AX, BALL_Y
+	; MOV BALL2_Y, AX
+	
+	
 WaitForVSync:
 	MOV DX, 03DAh         ; VGA Input Status Register 1
 WaitForRetrace:
@@ -294,12 +405,19 @@ WaitForRetrace:
 	MOV PADDLE_X, AX
 	CALL clearPaddle
 
+    
+	
+	CALL drawBall
+
+
 	MOV AX,PADDLE2_X2
 	MOV PADDLE2_X, AX
 	MOV PADDLE_X, AX
 	CALL drawPaddle
 
 	CALL drawSeparator
+
+
 
 	JMP gameLoop
 
