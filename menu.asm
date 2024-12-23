@@ -25,6 +25,7 @@ mainMenu PROC FAR
     MOV AH, 01H         
     INT 21H
     MOV choice, AL      
+    RET
 
 mainMenu ENDP
 
@@ -60,14 +61,9 @@ displayMenu PROC
 displayMenu ENDP
 
 clearScreen PROC
-    MOV AH, 06H            
-    MOV AL, 0       
-    MOV BH, 07H    
-    MOV CX, 0         
-    MOV DX, 184FH  
-    INT 10H
-
-     
+    mov al, 3h
+	mov ah, 0
+	int 10h
 
     RET
 clearScreen ENDP

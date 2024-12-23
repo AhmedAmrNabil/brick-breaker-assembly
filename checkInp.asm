@@ -1,4 +1,5 @@
 EXTRN PADDLE1_VEL_X:WORD
+EXTRN GAME_EXIT_FLAG:BYTE
 
 PUBLIC checkInput
 
@@ -28,6 +29,9 @@ checkInput PROC FAR
 	
 	CMP AL, 20H + 80H
 	JE stopMoveRight
+
+	CMP AL, 01h
+	JE exitGame
 	JMP exit
 	
 moveLeft:
@@ -44,6 +48,10 @@ moveRight:
 
 stopMoveRight:
 	MOV MOVE_RIGHT, 0
+	JMP exit
+
+exitGame:
+	MOV GAME_EXIT_FLAG, 1
 	JMP exit
 
 exit:

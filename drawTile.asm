@@ -1,5 +1,8 @@
+EXTRN CLEAR_TILE_OFFSET:BYTE
+
 PUBLIC drawTile
 PUBLIC clearTile
+
 .MODEL small
 .386
 .DATA
@@ -109,6 +112,7 @@ clearTile PROC FAR
 
 	MOV BX, AX    	; BH = y, BL = x
 	MOV AX, 0
+	ADD BL, CLEAR_TILE_OFFSET
 
 	; get the x pixel coordinate
 	MOV AL, BL
