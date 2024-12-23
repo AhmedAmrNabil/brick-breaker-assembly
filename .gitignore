@@ -1,0 +1,7 @@
+*.EXE
+*.OBJ
+*.bat
+*.conf
+run.py
+.vscode
+.venv
