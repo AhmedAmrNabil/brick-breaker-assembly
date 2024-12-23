@@ -23,7 +23,6 @@ PUBLIC BALL1_Y
 PUBLIC BALL_VELOCITY_X
 PUBLIC BALL_VELOCITY_Y
 
-
 getSystemTime MACRO
 	MOV AH,2CH    ;get the system time
 	INT 21H       ; CH = hour, CL = minute, DH = seconds, DL = 1/100s
@@ -213,12 +212,18 @@ gameLoop:
 	MOV AX, BALL_Y
 	MOV BALL1_Y, AX
 
+	MOV AX, PADDLE1_X
+	MOV PADDLE_X, AX
+
+	CALL drawPaddle
+
 WaitForVSync:
 	MOV DX, 03DAh         ; VGA Input Status Register 1
 WaitForRetrace:
 	IN AL, DX
 	TEST AL, 08H          ; Check the Vertical Retrace bit (bit 3)
 	JZ WaitForRetrace     ; Loop until retrace starts
+
 
 	CALL movePaddle1
 	CALL movePaddle2
