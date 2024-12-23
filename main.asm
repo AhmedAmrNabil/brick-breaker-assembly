@@ -153,7 +153,7 @@ SendBall_X PROC FAR
 	mov               dx,COM         ; Transmit data register
     mov               al, byte ptr BALL1_X       ; put the data into al
 	mov				  ah,2
-	out               dx,ax           ; sending the data
+	out               dx,axl          ; sending the data
 exit_x:
 RET
 SendBall_X ENDP
@@ -170,7 +170,7 @@ RecieveBall_X PROC FAR
 	test al,1
 	jz exitRecieveBall_X        ;if not check for sending
 	mov dx,COM
-	in ax,dx           ;read data from reg
+	in al,dx           ;read data from reg
 	cmp ah,2
 	jne exitRecieveBall_X
 	MOV AH, 0
@@ -192,7 +192,7 @@ SendBall_Y PROC FAR
 	mov               dx,COM          ; Transmit data register
     mov               al, byte ptr BALL1_Y       ; put the data into al
 	mov				  ah,3
-	out               dx,ax           ; sending the data
+	out               dx,al           ; sending the data
 exitSendBall_Y:
 RET
 SendBall_Y ENDP
@@ -208,7 +208,7 @@ RecieveBall_Y PROC FAR
 	jz exitRecieveBall_Y        ;if not check for sending
 	
 	mov dx,COM
-	in ax,dx           ;read data from reg
+	in al,dx           ;read data from reg
 	cmp ah,3
 	jne exitRecieveBall_Y
 	MOV AH, 0
@@ -318,20 +318,20 @@ printLoop2:
 	MOV BALL_Y, AX
 	CALL drawBall
 gameLoop:
-;CALL SendPaddle
-	; CALL SendBall_Y
-	; mov cx,100
-	; check_z:
-	; dec cx
-	; jnz check_z
-	; CALL RecieveBall_Y
-	CALL SendBall_X
-	mov cx,100
+	; CALL SendPaddle
+	; CALL ReceivePaddle
+	mov cx,1000000000000
 	check_z:
 	dec cx
 	jnz check_z
-	;CALL ReceivePaddle
+	CALL SendBall_X
 	CALL RecieveBall_X
+	mov cx,1000000000000
+	check_zz:
+	dec cx
+	jnz check_zz
+	CALL SendBall_Y
+	CALL RecieveBall_Y
 
 
 	GetSystemTime
@@ -348,7 +348,7 @@ gameLoop:
 	MOV BALL_VELOCITY_X, AX
 	MOV AX, BALL1_VELOCITY_Y
 	MOV BALL_VELOCITY_Y, AX
-	MOV AX, PADDLE1_X
+	; MOV AX, PADDLE1_X
 	; MOV PADDLE_X, AX
 	; MOV AX, PADDLE2_X
 	; MOV PADDLE_X, AX
@@ -380,8 +380,16 @@ gameLoop:
 	MOV AX,BaLL2_Yrec
 	MOV BALL2_Y, AX
 	MOV BALL_Y, AX
+	MOV AX, BALL2_VELOCITY_X
+	MOV BALL_VELOCITY_X, AX
+	MOV AX, BALL2_VELOCITY_Y
+	MOV BALL_VELOCITY_Y, AX
+	CALL checkCollision
 	CALL drawBall
-
+	MOV AX, BALL_VELOCITY_X
+	MOV BALL2_VELOCITY_X, AX
+	MOV AX, BALL_VELOCITY_Y
+	MOV BALL2_VELOCITY_Y, AX
 	; MOV AX, BALL_X
 	; MOV BALL2_X, AX
 	; MOV AX, BALL_Y
