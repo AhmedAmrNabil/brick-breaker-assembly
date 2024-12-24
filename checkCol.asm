@@ -147,7 +147,7 @@ checkPaddleX:
     MOV AH,0
     SUB AL,7
     MOV DX,AX
-   
+
     MOV AX, BALL_X
     ADD AX, BALL_SIZE / 2
     MOV BX, PADDLE_X

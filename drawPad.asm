@@ -5,6 +5,7 @@ EXTRN PADDLE2_WIDTH:WORD
 PUBLIC drawPaddle
 PUBLIC drawPaddle2
 PUBLIC clearPaddle
+PUBLIC clearPaddle2
 
 .MODEL SMALL
 .STACK 100h
@@ -137,6 +138,34 @@ clearPaddle PROC FAR
         JL clearRow                    
         RET
 clearPaddle ENDP
+
+clearPaddle2 PROC FAR
+    MOV DX, PADDLE_Y             
+    clearRow2:
+        PUSH DX                       
+        MOV CX, PADDLE_X             
+
+    drawBlack2:
+        MOV AH, 0Ch
+        MOV AL, 00h                   
+        MOV BH, 00h
+        INT 10h
+
+    clearNextPixel2:
+        INC CX                     
+        MOV AX, CX
+        SUB AX, PADDLE_X
+        CMP AX, PADDLE2_WIDTH
+        JL drawBlack2
+        POP DX                        
+        INC DX                         
+        MOV AX, DX
+        SUB AX, PADDLE_Y
+        CMP AX, PADDLE_HEIGHT
+        JL clearRow2
+        RET
+clearPaddle2 ENDP
+
 END
 
 

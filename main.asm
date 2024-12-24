@@ -5,6 +5,7 @@ EXTRN drawBall:FAR
 EXTRN drawColoredTile:FAR
 EXTRN clearBall:FAR
 EXTRN clearPaddle:FAR
+EXTRN clearPaddle2:FAR
 EXTRN checkInput:FAR
 EXTRN moveBall:FAR
 EXTRN checkCollision:FAR
@@ -35,6 +36,7 @@ PUBLIC POWERUPSARR
 PUBLIC PADDLE_VEL_MAG
 PUBLIC PADDLE_WIDTH
 PUBLIC PADDLE2_WIDTH
+PUBLIC SKIP_PADDLE_CHECK
 
 getSystemTime MACRO
 	MOV AH, 2CH    ;get the system time
@@ -145,6 +147,10 @@ initGame MACRO
 	MOV BaLL2_Yrec , 150
 	MOV BALL1_VELOCITY_X , 1
 	MOV BALL1_VELOCITY_Y , -2
+
+	; reset powerups (todo)
+
+	MOV SKIP_PADDLE_CHECK, 0
 
 	; draw the bricks (player 1)
 	MOV CL, BRICKS_COLS
@@ -286,6 +292,8 @@ ENDM
 	waitingMessage db 'Waiting for another player$'
 
 	POWERUPSARR db 5 dup(0)
+
+	SKIP_PADDLE_CHECK db 0
 
 	COM EQU 03F8h
 .CODE
@@ -533,6 +541,10 @@ SendPaddle:
 
 	MOV DX, COM
 	MOV AL, BYTE PTR PADDLE1_X
+	CMP PADDLE2_WIDTH, 60
+	JNE continueSendPaddle
+	OR AL, 10000000b
+continueSendPaddle:
 	OUT DX, AL
 
 exitSendAll:
@@ -591,6 +603,19 @@ WaitPaddleX:
 	MOV DX, COM
 	IN AL, DX
 	MOV AH, 0
+
+	TEST AL, 10000000b
+	JZ resetSkipPaddleFlag
+	MOV PADDLE2_WIDTH, 60
+	MOV SKIP_PADDLE_CHECK, 1
+	AND AL, 01111111b
+	JMP continueWaitPaddleX
+
+resetSkipPaddleFlag:
+	MOV PADDLE2_WIDTH, 40
+	MOV SKIP_PADDLE_CHECK, 0
+
+continueWaitPaddleX:
 	ADD AX, 160 
 	MOV PADDLE2_X2, AX
 
@@ -683,12 +708,12 @@ gameLoop:
 
 	CALL powerups
 
-WaitForVSync:
-	MOV DX, 03DAh         ; VGA Input Status Register 1
-WaitForRetrace:
-	IN AL, DX
-	TEST AL, 08H          ; Check the Vertical Retrace bit (bit 3)
-	JZ WaitForRetrace     ; Loop until retrace starts
+; WaitForVSync:
+; 	MOV DX, 03DAh         ; VGA Input Status Register 1
+; WaitForRetrace:
+; 	IN AL, DX
+; 	TEST AL, 08H          ; Check the Vertical Retrace bit (bit 3)
+; 	JZ WaitForRetrace     ; Loop until retrace starts
 
 	MOV CX, GAMELOOP_SPEED
 collisionLoop:
@@ -698,7 +723,6 @@ collisionLoop:
 
 	CALL SendAll
 	CALL ReceiveAll
-
 
 	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 	; Player 1 ball                       ;
@@ -773,30 +797,16 @@ collisionLoop:
 	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-	; Player 1 paddle                     ;
-	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-	skipLoop:
-	CALL movePaddle1
-
-	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-	; End Player 1 paddle                 ;
-	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-
-
-
-	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 	; Player 2 paddle                     ;
 	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-	drawSeparator
+skipLoop:
 	MOV AX, PADDLE2_X
 	CMP AX, PADDLE2_X2
-	JE gameLoop
+	; JE gameLoop
 
 	MOV PADDLE_X, AX
-	CALL clearPaddle
+	CALL clearPaddle2
 	
 	MOV AX, PADDLE2_X2
 	MOV PADDLE2_X, AX
@@ -807,8 +817,18 @@ collisionLoop:
 	; End Player 2 paddle                 ;
 	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+	; Player 1 paddle                     ;
+	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+	CALL movePaddle1
+
+	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+	; End Player 1 paddle                 ;
+	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 	drawSeparator
-	
+
 	JMP gameLoop
 gotoMainMenu:
 	resetInterruptHandle

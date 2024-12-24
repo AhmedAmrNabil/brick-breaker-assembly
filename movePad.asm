@@ -5,6 +5,7 @@ EXTRN PADDLE2_X:WORD
 EXTRN drawPaddle:FAR
 EXTRN clearPaddle:FAR
 EXTRN PADDLE_WIDTH:WORD
+EXTRN SKIP_PADDLE_CHECK:WORD
 
 PUBLIC movePaddle1
 
@@ -17,10 +18,14 @@ PUBLIC movePaddle1
 
 .CODE
 movePaddle1 PROC FAR
+	MOV AX, SKIP_PADDLE_CHECK
+	CMP AX, 1
+	JE movePaddle1End
 
 	CMP PADDLE1_VEL_X,0
 	JE skipMovePaddle1
 
+movePaddle1End:
 	MOV AX, PADDLE1_X
 	MOV PADDLE_X, AX
 	CALL clearPaddle
