@@ -84,10 +84,10 @@ initGame MACRO
 	MOV SEED, EAX
 	MUL EAX
 
-	SHR EAX, 15
-	AND EAX,00000003h
-	ADD EAX,2
-	MOV POWERUP_COUNT,AL
+	; SHR EAX, 15
+	; AND EAX,00000003h
+	; ADD EAX,2
+	; MOV POWERUP_COUNT,AL
 
 
 	MOV AH, 0
@@ -133,6 +133,7 @@ printLoop2:
 	
 
 	MOV CL, POWERUP_COUNT
+	MOV ESI,0
 powerupLoop1:
 	PUSH CX
 	CALL LCG
@@ -140,6 +141,9 @@ powerupLoop1:
 	MOV ECX,48
 	XOR EDX,EDX
 	DIV ECX
+	MOV SENDRANDOMTILES[ESI],DL
+	INC ESI
+	MOV DH,0
 	MOV AX,DX
 	MOV CL,8
 	DIV CL
@@ -147,6 +151,25 @@ powerupLoop1:
 	CALL drawColoredTile
 	POP CX
 	LOOP powerupLoop1	
+
+	CALL initRandom
+
+	MOV CL, POWERUP_COUNT
+	MOV ESI,0
+powerupLoop2:
+	PUSH CX
+	MOV AL, RECEIVERANDOMTILES[ESI]
+	MOV AH,0
+	MOV DX,0
+	MOV CL,8
+	DIV CL
+	XCHG AL, AH
+	ADD AL,8
+	CALL drawColoredTile
+	INC ESI
+	POP CX
+	LOOP powerupLoop2	
+
 
 	; draw the paddle (player 1)
 	MOV AX, PADDLE1_X
@@ -203,7 +226,7 @@ ENDM
 	BALL1_VELOCITY_X dw 2
 	BALL1_VELOCITY_Y dw -1
 	GAME_EXIT_FLAG db 0
-	POWERUP_COUNT db 0
+	POWERUP_COUNT db 2
 
 	CLEAR_TILE_OFFSET db 8
 
@@ -219,6 +242,9 @@ ENDM
 	MULTIPLIER EQU 22695477	
 	INCREMENT EQU 1
 	MODULUS EQU 2147483647
+
+	SENDRANDOMTILES DB 5 dup(0)
+	RECEIVERANDOMTILES DB 5 dup(0)
 
 	COM EQU 03F8h
 .CODE
@@ -238,6 +264,50 @@ LCG PROC FAR
 	POPA
 	RET
 LCG ENDP
+
+
+initRandom PROC FAR
+	PUSHA
+	PUSHF
+	MOV CX, 0
+	MOV CL, POWERUP_COUNT
+	MOV ESI, 0
+
+mainInitRandomLoop:
+	PUSH CX
+	;; sending tiles at tiles[esi]
+	MOV DX, COM+5
+SENDLOOP2:
+	IN AL, DX
+	TEST AL, 00100000b
+	JZ SENDLOOP2
+
+	MOV AL, SENDRANDOMTILES[ESI]
+	MOV DX, COM
+	OUT DX, AL
+
+	;; recieveing tiles at tiles[esi]
+	MOV DX, COM+5
+RECEIVELOOP2:
+	IN AL, DX
+	TEST AL, 00000001b
+	JZ RECEIVELOOP2
+
+	MOV DX, COM
+	IN AL,DX
+	MOV RECEIVERANDOMTILES[ESI],AL
+	INC ESI
+	
+	POP CX
+	loop mainInitRandomLoop
+
+	POPF
+	POPA
+
+	RET
+
+initRandom ENDP
+
 
 SendAll PROC FAR
 
@@ -326,6 +396,7 @@ exitReceiveAll:
 	RET
 ReceiveAll ENDP
 
+
 drawSeparator MACRO
 	LOCAL print
 	PUSHA
@@ -350,6 +421,46 @@ print:
 ENDM
 
 
+loadingScreen PROC FAR
+
+
+mainLoadingLoop:
+	MOV DX, COM+5
+	IN AL,DX
+	TEST AL, 00000001b
+	JZ sendLoadingLoop
+
+	MOV DX, COM
+	IN AL, DX
+	CMP AL, 0FEh
+	JE exitLoadingScreen
+
+sendLoadingLoop:
+	MOV DX, COM+5
+	IN AL, DX
+	TEST AL, 00100000b
+	JZ mainLoadingLoop
+
+	MOV DX, COM
+	MOV AL, 0FEH
+	OUT DX, AL
+
+	Jmp mainLoadingLoop
+
+
+exitLoadingScreen:
+	MOV DX, COM+5
+	IN AL, DX
+	TEST AL, 00100000b
+	JZ exitLoadingScreen
+
+	MOV DX, COM
+	MOV AL, 0FEH
+	OUT DX, AL
+
+	ret
+loadingScreen ENDP
+
 MAIN PROC FAR
 	MOV AX, @DATA
 	MOV DS, AX
@@ -361,7 +472,7 @@ MAIN PROC FAR
 
 ;Set LSB of the Baud Rate Divisor Latch register
 	mov dx,COM
-	mov al,1
+	mov al,01h
 	out dx,al
 
 ;Set MSB of the Baud Rate Divisor Latch register
@@ -374,6 +485,8 @@ MAIN PROC FAR
 	mov dx,COM+3
 	mov ax,00011011b
 	out dx,al
+
+	
 
 menuLoop:
     CALL mainMenu
@@ -388,6 +501,7 @@ menuLoop:
   JMP menuLoop
 
 playGame:
+	CALL loadingScreen
 	initGame
 	setIntteruptHandle
 
