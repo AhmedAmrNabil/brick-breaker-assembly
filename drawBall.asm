@@ -38,7 +38,6 @@ drawBall PROC FAR
     RET
 drawBall ENDP
 
-
 clearBall PROC FAR
     MOV AX,00h
 

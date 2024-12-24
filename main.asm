@@ -37,6 +37,9 @@ PUBLIC PADDLE_VEL_MAG
 PUBLIC PADDLE_WIDTH
 PUBLIC PADDLE2_WIDTH
 PUBLIC SKIP_PADDLE_CHECK
+PUBLIC GAME_OVER_FLAG
+PUBLIC GAME_OVER_FLAG2
+PUBLIC COUNT_TILES
 
 getSystemTime MACRO
 	MOV AH, 2CH    ;get the system time
@@ -149,8 +152,9 @@ initGame MACRO
 	MOV BALL1_VELOCITY_Y , -2
 	MOV PADDLE_WIDTH,40
 	MOV PADDLE2_WIDTH,40
+	MOV GAME_OVER_FLAG, 16
 
-	; reset powerups (todo)
+	; reset powerups
 
 	MOV CX,5
 	MOV SI,0
@@ -163,7 +167,7 @@ resetPowerups:
 
 	; draw the bricks (player 1)
 	MOV CL, BRICKS_COLS
-	MOV DX, 0
+	MOV DX, 8
 printLoop1:
 	MOV AX, DX
 	DIV CL
@@ -175,7 +179,7 @@ printLoop1:
 
 	; draw the bricks (player 2)
 	MOV CL, BRICKS_COLS
-	MOV DX, 0
+	MOV DX, 8
 printLoop2:
 	MOV AX, DX
 	DIV CL
@@ -198,6 +202,7 @@ powerupLoop1:
 	MOV CL,8
 	DIV CL
 	XCHG AL, AH
+	INC AH
 	CALL drawColoredTile
 	POP CX
 	LOOP powerupLoop1	
@@ -215,6 +220,7 @@ powerupLoop2:
 	DIV CL
 	XCHG AL, AH
 	ADD AL, 8
+	INC AH
 	CALL drawColoredTile
 	POP CX
 	LOOP powerupLoop2	
@@ -241,6 +247,26 @@ powerupLoop2:
 	MOV BALL_X, AX
 	MOV AX, BALL2_Y
 	MOV BALL_Y, AX
+	CALL drawBall
+
+	mov Ball_X,2
+	mov BALL_Y,2
+	CALL drawBall
+	 mov Ball_X,9
+	mov BALL_Y,2
+	CALL drawBall
+	 mov Ball_X,16
+	mov BALL_Y,2
+	CALL drawBall
+
+	 mov Ball_X,164
+	mov BALL_Y,2
+	CALL drawBall
+	 mov Ball_X,171
+	mov BALL_Y,2
+	CALL drawBall
+	 mov Ball_X,178
+	mov BALL_Y,2
 	CALL drawBall
 
 	; draw the separator
@@ -273,20 +299,33 @@ ENDM
 	BALL_VELOCITY_Y dw ?
 	BALL1_VELOCITY_X dw 2
 	BALL1_VELOCITY_Y dw -1
-	GAME_EXIT_FLAG db 0
+	
 	POWERUP_COUNT_1 db 0
 	POWERUP_COUNT_2 db 0
+
+	GAME_EXIT_FLAG db 0
+	GAME_OVER_FLAG dw 16
+	GAME_OVER_FLAG2 dw 178
 
 	GAMELOOP_SPEED dw 2
 
 	CLEAR_TILE_OFFSET db 8
+	COUNT_TILES db 0
+
+	TEXT_GAME_OVER db 'Game Over','$'
+	TEXT_PLAYERL db 'YOU ARE LOSE','$'
+	TEXT_PLAYERW db 'YOU ARE WIN','$'
+
+	TEXT_REST_GAME db 'Press Y to Play Again','$'
+	TEXT_REST_MENU db 'Press N to Main Menu ','$'
+	yes_or_no db ?
 
 	TIME DB 0
 
 	BRICKS_COLS EQU 8
 	BRICKS_COUNT EQU 48
-	PADDLE_VEL_MAG dw 4
 	BALL_SIZE EQU 5
+	PADDLE_VEL_MAG dw 4
 
 	int9Seg DW ?
 	int9Off DW ?
@@ -306,6 +345,73 @@ ENDM
 
 	COM EQU 03F8h
 .CODE
+
+Game_over_Screen PROC FAR
+	MOV AH, 0
+	MOV AL, 13h
+	INT 10h
+	MOV ah,02H
+	mov bh,00H
+	mov dh,04h
+	mov dl,04h
+	int 10h
+cmp GAME_OVER_FLAG,1
+	jg skiping
+	mov ah,09H
+	lea dx,TEXT_GAME_OVER
+	int 21h
+	MOV ah,02H
+	mov bh,00H
+	mov dh,04h
+	mov dl,04h
+	int 10h
+	mov ah,09H
+	lea dx,TEXT_PLAYERL
+	int 21h
+	jmp EXIT_SC
+
+skiping:
+cmp GAME_OVER_FLAG2,160
+	jg WINNING
+	MOV ah,02H
+	mov bh,00H
+	mov dh,04h
+	mov dl,04h
+	int 10h
+	mov ah,09H
+	lea dx,TEXT_PLAYERW
+	int 21h
+	jmp EXIT_SC
+WINNING:
+	MOV ah,02H
+	mov bh,00H
+	mov dh,04h
+	mov dl,04h
+	int 10h
+	mov ah,09H
+	lea dx,TEXT_PLAYERW
+	int 21h
+EXIT_SC:
+	MOV ah,02H
+	mov bh,00H
+	mov dh,08h
+	mov dl,04h
+	int 10h
+	mov  ah,09h
+	lea dx,TEXT_REST_GAME
+	int 21h
+	
+	MOV ah,02H
+	mov bh,00H
+	mov dh,0Ah
+	mov dl,04h
+	int 10h
+	mov  ah,09h
+	lea dx,TEXT_REST_MENU
+	int 21h
+
+RET
+Game_over_Screen ENDP
 
 LCG PROC FAR
 	PUSHA
@@ -350,7 +456,7 @@ randomBricksLoop:
 	PUSH CX
 	CALL LCG
 	MOV EAX,SEED
-	MOV ECX,48
+	MOV ECX,40
 	XOR EDX,EDX
 	DIV ECX
 	MOV myRandomTiles[SI], DL
@@ -560,8 +666,6 @@ exitSendAll:
 	RET
 SendAll ENDP
 
-
-
 ReceiveAll PROC FAR
 
 WaitForReceiveByte:
@@ -724,6 +828,34 @@ gameLoop:
 	JE gameLoop
 	MOV TIME, DL
 
+	cmp GAME_OVER_FLAG,1
+	jl Game_Over_Loop
+	cmp GAME_OVER_FLAG,15
+	jl clearchance 
+	cmp COUNT_TILES,40d
+	je Game_Over_Loop
+	jmp coun
+clearchance:
+	mov ax,GAME_OVER_FLAG
+	add ax,7
+	mov BALL_X,ax
+	mov BALL_Y,2
+	CALL clearBall
+coun:
+
+	cmp GAME_OVER_FLAG2,160
+	jl Game_Over_Loop
+    cmp GAME_OVER_FLAG2,177
+	jl clearchance2
+	jmp coun2 
+clearchance2:
+	mov ax,GAME_OVER_FLAG2
+	add ax,7
+	mov BALL_X,ax
+	mov BALL_Y,2
+	CALL clearBall
+coun2:
+
 	CALL powerups
 
 WaitForVSync:
@@ -850,6 +982,19 @@ skipDrawPaddle2:
 	drawSeparator
 
 	JMP gameLoop
+
+Game_Over_Loop:
+	resetInterruptHandle
+	CALL Game_over_Screen
+	MOV AH, 00H         
+    INT 16H
+	mov yes_or_no,al
+	cmp yes_or_no,'Y'
+    je gotoMainMenu
+	cmp yes_or_no,'y'
+	je gotoMainMenu
+	JMP Game_Over_Loop
+
 gotoMainMenu:
 	resetInterruptHandle
 	call SendAll
