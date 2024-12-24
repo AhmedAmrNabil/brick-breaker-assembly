@@ -61,6 +61,7 @@ skipMovement:
 	CALL drawPaddle
 
 skipMovePaddle1:
+	MOV SKIP_PADDLE_CHECK,0
 	RET
 movePaddle1 ENDP
 

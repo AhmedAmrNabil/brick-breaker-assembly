@@ -1,4 +1,5 @@
-EXTRN PADDLE_X:WORD
+EXTRN PADDLE1_X:WORD
+EXTRN PADDLE2_X:WORD
 EXTRN PADDLE_WIDTH:WORD
 EXTRN PADDLE2_WIDTH:WORD
 
@@ -20,16 +21,16 @@ drawPaddle PROC FAR
     MOV DX, PADDLE_Y             
     drawRow:
         PUSH DX                       
-        MOV CX, PADDLE_X             
+        MOV CX, PADDLE1_X             
 
     drawPixel:
         MOV AX, CX
-        SUB AX, PADDLE_X
+        SUB AX, PADDLE1_X
         CMP AX, EDGE_WIDTH
         JL drawRed                   
 
         MOV AX, CX
-        SUB AX, PADDLE_X
+        SUB AX, PADDLE1_X
         MOV BX,PADDLE_WIDTH
         SUB BX,AX
         CMP BX,EDGE_WIDTH
@@ -51,7 +52,7 @@ drawPaddle PROC FAR
     nextPixel:
         INC CX                     
         MOV AX, CX
-        SUB AX, PADDLE_X
+        SUB AX, PADDLE1_X
         CMP AX, PADDLE_WIDTH
         JL drawPixel                
         POP DX                        
@@ -68,16 +69,16 @@ drawPaddle2 PROC FAR
     MOV DX, PADDLE_Y             
     drawRow2:
         PUSH DX                       
-        MOV CX, PADDLE_X             
+        MOV CX, PADDLE2_X             
 
     drawPixel2:
         MOV AX, CX
-        SUB AX, PADDLE_X
+        SUB AX, PADDLE2_X
         CMP AX, EDGE_WIDTH
         JL drawRed2                   
 
         MOV AX, CX
-        SUB AX, PADDLE_X
+        SUB AX, PADDLE2_X
         MOV BX,PADDLE2_WIDTH
         SUB BX,AX
         CMP BX,EDGE_WIDTH
@@ -99,7 +100,7 @@ drawPaddle2 PROC FAR
     nextPixel2:
         INC CX                     
         MOV AX, CX
-        SUB AX, PADDLE_X
+        SUB AX, PADDLE2_X
         CMP AX, PADDLE2_WIDTH
         JL drawPixel2                
         POP DX                        
@@ -116,7 +117,7 @@ clearPaddle PROC FAR
     MOV DX, PADDLE_Y             
     clearRow:
         PUSH DX                       
-        MOV CX, PADDLE_X             
+        MOV CX, PADDLE1_X             
 
     drawBlack:
         MOV AH, 0Ch
@@ -127,7 +128,7 @@ clearPaddle PROC FAR
     clearNextPixel:
         INC CX                     
         MOV AX, CX
-        SUB AX, PADDLE_X
+        SUB AX, PADDLE1_X
         CMP AX, PADDLE_WIDTH
         JL drawBlack              
         POP DX                        
@@ -143,7 +144,7 @@ clearPaddle2 PROC FAR
     MOV DX, PADDLE_Y             
     clearRow2:
         PUSH DX                       
-        MOV CX, PADDLE_X             
+        MOV CX, PADDLE2_X             
 
     drawBlack2:
         MOV AH, 0Ch
@@ -154,7 +155,7 @@ clearPaddle2 PROC FAR
     clearNextPixel2:
         INC CX                     
         MOV AX, CX
-        SUB AX, PADDLE_X
+        SUB AX, PADDLE2_X
         CMP AX, PADDLE2_WIDTH
         JL drawBlack2
         POP DX                        

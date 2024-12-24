@@ -200,9 +200,6 @@ drawColoredBotBorder:
 	RET
 drawColoredTile ENDP
 
-
-
-
 clearTile PROC FAR
 	PUSHA
 	PUSHF

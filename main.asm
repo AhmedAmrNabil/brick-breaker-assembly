@@ -147,8 +147,17 @@ initGame MACRO
 	MOV BaLL2_Yrec , 150
 	MOV BALL1_VELOCITY_X , 1
 	MOV BALL1_VELOCITY_Y , -2
+	MOV PADDLE_WIDTH,40
+	MOV PADDLE2_WIDTH,40
 
 	; reset powerups (todo)
+
+	MOV CX,5
+	MOV SI,0
+resetPowerups:
+	MOV POWERUPSARR[SI],0
+	INC SI
+	LOOP resetPowerups
 
 	MOV SKIP_PADDLE_CHECK, 0
 
@@ -541,7 +550,7 @@ SendPaddle:
 
 	MOV DX, COM
 	MOV AL, BYTE PTR PADDLE1_X
-	CMP PADDLE2_WIDTH, 60
+	CMP PADDLE_WIDTH, 60
 	JNE continueSendPaddle
 	OR AL, 10000000b
 continueSendPaddle:
@@ -550,6 +559,8 @@ continueSendPaddle:
 exitSendAll:
 	RET
 SendAll ENDP
+
+
 
 ReceiveAll PROC FAR
 
@@ -612,6 +623,11 @@ WaitPaddleX:
 	JMP continueWaitPaddleX
 
 resetSkipPaddleFlag:
+	CMP PADDLE2_WIDTH,60
+	JNE continuepaddlewidthx
+	call clearPaddle2
+
+continuepaddlewidthx:	
 	MOV PADDLE2_WIDTH, 40
 	MOV SKIP_PADDLE_CHECK, 0
 
@@ -667,6 +683,8 @@ EndPowerups:
 	CALL clearPaddle
 	POP CX
 	MOV PADDLE_WIDTH,CX
+	MOV SKIP_PADDLE_CHECK,1
+	CALL movePaddle1
 	call drawPaddle
 
 actuallyExitPowerups:
@@ -708,12 +726,12 @@ gameLoop:
 
 	CALL powerups
 
-; WaitForVSync:
-; 	MOV DX, 03DAh         ; VGA Input Status Register 1
-; WaitForRetrace:
-; 	IN AL, DX
-; 	TEST AL, 08H          ; Check the Vertical Retrace bit (bit 3)
-; 	JZ WaitForRetrace     ; Loop until retrace starts
+WaitForVSync:
+	MOV DX, 03DAh         ; VGA Input Status Register 1
+WaitForRetrace:
+	IN AL, DX
+	TEST AL, 08H          ; Check the Vertical Retrace bit (bit 3)
+	JZ WaitForRetrace     ; Loop until retrace starts
 
 	MOV CX, GAMELOOP_SPEED
 collisionLoop:
@@ -801,9 +819,9 @@ collisionLoop:
 	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 skipLoop:
-	MOV AX, PADDLE2_X
-	CMP AX, PADDLE2_X2
-	; JE gameLoop
+	; MOV AX, PADDLE2_X
+	; CMP AX, PADDLE2_X2
+	; JE skipDrawPaddle2
 
 	MOV PADDLE_X, AX
 	CALL clearPaddle2
@@ -812,6 +830,8 @@ skipLoop:
 	MOV PADDLE2_X, AX
 	MOV PADDLE_X, AX
 	CALL drawPaddle2
+
+skipDrawPaddle2:
 
 	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 	; End Player 2 paddle                 ;

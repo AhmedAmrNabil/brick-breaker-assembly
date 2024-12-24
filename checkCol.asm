@@ -1,7 +1,8 @@
-EXTRN BALL_X:WORD
-EXTRN BALL_Y:WORD
+EXTRN BALL1_X:WORD
+EXTRN BALL1_Y:WORD
 EXTRN BALL2_X:WORD
 EXTRN BALL2_Y:WORD
+EXTRN PADDLE1_X:WORD
 EXTRN BALL_VELOCITY_X:WORD
 EXTRN BALL_VELOCITY_Y:WORD
 EXTRN PADDLE_X:WORD
@@ -112,7 +113,7 @@ resetPowerups:
     MOV ECX, 3
     DIV ECX
 
-    MOV SI, DX
+    MOV SI, 2
     MOV POWERUPSARR[SI], 127
 
 ExitCheckPowerup:
@@ -120,25 +121,25 @@ ExitCheckPowerup:
 checkPowerup ENDP
 
 checkPaddleCollision PROC FAR
-    MOV AX, BALL_Y
+    MOV AX, BALL1_Y
     ADD AX, BALL_SIZE
     CMP AX, PADDLE_Y
     JL  endCheckPaddle
 
     MOV AX, PADDLE_Y
     ADD AX, PADDLE_HEIGHT
-    CMP AX, BALL_Y
+    CMP AX, BALL1_Y
     JL  endCheckPaddle
 
 checkPaddleX:
-    MOV AX, BALL_X
+    MOV AX, BALL1_X
     ADD AX,BALL_SIZE
-    CMP AX, PADDLE_X
+    CMP AX, PADDLE1_X
     JLE  endCheckPaddle
 
-    MOV AX, PADDLE_X
+    MOV AX, PADDLE1_X
     ADD AX, PADDLE_WIDTH
-    CMP AX, BALL_X
+    CMP AX, BALL1_X
     JLE  endCheckPaddle
     
     MOV AX, PADDLE_WIDTH
@@ -148,9 +149,9 @@ checkPaddleX:
     SUB AL,7
     MOV DX,AX
 
-    MOV AX, BALL_X
+    MOV AX, BALL1_X
     ADD AX, BALL_SIZE / 2
-    MOV BX, PADDLE_X
+    MOV BX, PADDLE1_X
     ADD BX,7
     CMP AX,BX
     JL farLeft
@@ -161,37 +162,37 @@ checkPaddleX:
     CMP AX,BX
     JL nearRight
     JMP farRight
+    JMP endCheckPaddle
     RET
 
 nearLeft:
     MOV BALL_VELOCITY_X, -BALL_VELOCITY_MAG
     MOV BALL_VELOCITY_Y, -BALL_VELOCITY_MAG*2
-    RET
+    JMP endCheckPaddle
 farLeft:
-    MOV AX,BALL_Y
+    MOV AX,BALL1_Y
     CMP AX,PADDLE_Y
     JGE collideFromSide
     
     MOV BALL_VELOCITY_X, -BALL_VELOCITY_MAG*2
     MOV BALL_VELOCITY_Y, -BALL_VELOCITY_MAG
-    RET
+    JMP endCheckPaddle
 nearRight:
     MOV BALL_VELOCITY_X, BALL_VELOCITY_MAG
     MOV BALL_VELOCITY_Y, -BALL_VELOCITY_MAG*2
-    RET
+    JMP endCheckPaddle
 
 farRight:
-    MOV AX,BALL_Y
+    MOV AX,BALL1_Y
     CMP AX,PADDLE_Y
     JGE collideFromSide
 
     MOV BALL_VELOCITY_X, BALL_VELOCITY_MAG*2
     MOV BALL_VELOCITY_Y, -BALL_VELOCITY_MAG
-    RET
+    JMP endCheckPaddle
 
 collideFromSide:
     NEG BALL_VELOCITY_X
-    RET
 
 endCheckPaddle:
     CALL drawPaddle
@@ -200,8 +201,8 @@ checkPaddleCollision ENDP
 
 checkCollision PROC FAR
     MOV POWERUP_FLAG, 0
-    MOV AX, BALL_X
-    MOV BX, BALL_Y
+    MOV AX, BALL1_X
+    MOV BX, BALL1_Y
     MOV COLLISION_X_FLAG, 0
     MOV COLLISION_Y_FLAG, 0
 
@@ -221,7 +222,7 @@ RightBoundary:
 
 ; Check top boundary
 TopBoundary:
-    MOV BX, BALL_Y
+    MOV BX, BALL1_Y
     CMP BX, 1
     JG  BottomBoundary
     NEG BALL_VELOCITY_Y
@@ -236,25 +237,26 @@ BottomBoundary:
     JMP EndCheck
 
 skipBottomBoundary:
+    
     CMP BX, 100
     JL skipPaddle
-    call checkPaddleCollision
+    CALL checkPaddleCollision
     JMP EndCheck
     
 skipPaddle:
 
 ; Check the color of the pixel at the top and bottom edges of the ball
 TopEdgeColor:
-    MOV CX, BALL_X
-    MOV DX, BALL_Y
+    MOV CX, BALL1_X
+    MOV DX, BALL1_Y
     DEC DX
     DEC DX
     CALL getPixelColor
     CMP AX, 0
     JNE BallCollidedFromTop
 
-    MOV CX, BALL_X
-    MOV DX, BALL_Y
+    MOV CX, BALL1_X
+    MOV DX, BALL1_Y
     DEC DX
     DEC DX
     ADD CX, BALL_SIZE - 1
@@ -263,16 +265,16 @@ TopEdgeColor:
     JNE BallCollidedFromTop 
 
 BottomEdgeColor:
-    MOV CX, BALL_X
-    MOV DX, BALL_Y
+    MOV CX, BALL1_X
+    MOV DX, BALL1_Y
     ADD DX, BALL_SIZE
     INC DX
     CALL getPixelColor
     CMP AX, 0
     JNE BallCollidedFromBottom
 
-    MOV CX, BALL_X
-    MOV DX, BALL_Y
+    MOV CX, BALL1_X
+    MOV DX, BALL1_Y
     ADD DX, BALL_SIZE
     INC DX
     ADD CX, BALL_SIZE - 1
@@ -282,36 +284,36 @@ BottomEdgeColor:
 
 ; Check the color of the pixel at the left and right edges of the ball
 LeftEdgeColor:
-    MOV CX, BALL_X
+    MOV CX, BALL1_X
     DEC CX
     DEC CX
-    MOV DX, BALL_Y
+    MOV DX, BALL1_Y
     CALL getPixelColor
     CMP AX, 0
     JNE BallCollidedFromLeft
 
-    MOV CX, BALL_X
+    MOV CX, BALL1_X
     DEC CX
     DEC CX
-    MOV DX, BALL_Y
+    MOV DX, BALL1_Y
     ADD DX, BALL_SIZE - 1
     CALL getPixelColor
     CMP AX, 0
     JNE BallCollidedFromLeft
 
 RightEdgeColor:
-    MOV CX, BALL_X
+    MOV CX, BALL1_X
     ADD CX, BALL_SIZE
     INC CX
-    MOV DX, BALL_Y
+    MOV DX, BALL1_Y
     CALL getPixelColor
     CMP AX, 0
     JNE BallCollidedFromRight
 
-    MOV CX, BALL_X
+    MOV CX, BALL1_X
     ADD CX, BALL_SIZE
     INC CX
-    MOV DX, BALL_Y
+    MOV DX, BALL1_Y
     ADD DX, BALL_SIZE - 1
     CALL getPixelColor
     CMP AX, 0
