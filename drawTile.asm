@@ -1,4 +1,5 @@
 EXTRN CLEAR_TILE_OFFSET:BYTE
+EXTRN COUNT_TILES:BYTE
 
 PUBLIC drawTile
 PUBLIC clearTile
@@ -109,6 +110,9 @@ drawTile ENDP
 clearTile PROC FAR
 	PUSHA
 	PUSHF
+	mov dh,COUNT_TILES
+	inc dh
+	mov COUNT_TILES,dh
 
 	MOV BX, AX    	; BH = y, BL = x
 	MOV AX, 0

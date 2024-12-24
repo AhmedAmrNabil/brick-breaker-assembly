@@ -12,6 +12,8 @@ EXTRN choice:BYTE
 EXTRN checkCollision2:FAR
 EXTRN Chat:FAR
 
+
+
 PUBLIC PADDLE_X
 PUBLIC PADDLE1_X
 PUBLIC PADDLE1_VEL_X
@@ -26,6 +28,8 @@ PUBLIC BALL_VELOCITY_X
 PUBLIC BALL_VELOCITY_Y
 PUBLIC CLEAR_TILE_OFFSET
 PUBLIC GAME_EXIT_FLAG
+PUBLIC GAME_OVER_FLAG
+PUBLIC COUNT_TILES
 
 getSystemTime MACRO
 	MOV AH,2CH    ;get the system time
@@ -71,7 +75,80 @@ resetInterruptHandle MACRO
 ENDM
 
 
-initGame MACRO
+
+
+
+.MODEL small
+.386
+
+.STACK 100h
+.DATA
+
+	PADDLE1_VEL_X dw 0
+	
+	PADDLE_X dw ?
+	PADDLE1_X dw 50
+	PADDLE2_X dw 210
+	PADDLE2_X2 dw 210
+
+	BALL_X dw ?
+	BALL_Y dw ?
+	BALL1_X dw 80
+	BALL1_Y dw 150
+	BALL2_X dw 240
+	BALL2_Y dw 150
+	BaLL2_Xrec dw 240
+	BaLL2_Yrec dw 150
+	BALL_VELOCITY_X dw ?
+	BALL_VELOCITY_Y dw ?
+	BALL1_VELOCITY_X dw 2
+	BALL1_VELOCITY_Y dw -1
+	GAME_EXIT_FLAG db 0
+	GAME_OVER_FLAG db 1
+	CLEAR_TILE_OFFSET db 8
+	COUNT_TILES db 0
+	TEXT_GAME_OVER db 'Game Over','$'
+	new_line db 10,13,'$'
+	TEXT_PLAYER db 'Player','$'
+	TEXT_REST_GAME db 'Press Y to Play Again','$'
+	TEXT_REST_MENU db 'Press N to Main Menu ','$'
+
+	TIME DB 1
+
+	BRICKS_COLS EQU 8
+	BRICKS_COUNT EQU 48
+	PADDLE_VEL_MAG EQU 5
+
+	int9Seg DW ?
+	int9Off DW ?
+
+	COM EQU 03F8h
+.CODE
+
+
+drawSeparator MACRO
+	LOCAL print
+	PUSHA
+	PUSHF
+
+	MOV   CX, 160
+	MOV   DX,0
+
+	MOV   AH,0ch
+	MOV   AL,0fh
+print:
+	INT   10h
+	DEC   CX
+	INT   10h
+	INC   CX
+	INC   DX
+	CMP   DX,200
+	JL    print
+
+	POPF
+	POPA
+ENDM
+initGame PROC FAR
 	; set video mode to 320x200 256-color mode
 	MOV AH, 0
 	MOV AL, 13h
@@ -140,50 +217,52 @@ printLoop2:
 
 	; draw the separator
 	drawSeparator
-ENDM
+	RET
+initGame ENDP
 
 
-.MODEL small
-.386
+Game_over_Screen PROC FAR
+	MOV AH, 0
+	MOV AL, 13h
+	INT 10h
+	MOV ah,02H
+	mov bh,00H
+	mov dh,04h
+	mov dl,04h
+	int 10h
+	mov ah,09H
+	lea dx,TEXT_GAME_OVER
+	int 21h
 
-.STACK 100h
-.DATA
-
-	PADDLE1_VEL_X dw 0
+	MOV ah,02H
+	mov bh,00H
+	mov dh,06h
+	mov dl,04h
+	int 10h
+	mov  ah,09h
+	lea dx,TEXT_PLAYER
+	int 21h
 	
-	PADDLE_X dw ?
-	PADDLE1_X dw 50
-	PADDLE2_X dw 210
-	PADDLE2_X2 dw 210
+	MOV ah,02H
+	mov bh,00H
+	mov dh,08h
+	mov dl,04h
+	int 10h
+	mov  ah,09h
+	lea dx,TEXT_REST_GAME
+	int 21h
+	
+	MOV ah,02H
+	mov bh,00H
+	mov dh,0Ah
+	mov dl,04h
+	int 10h
+	mov  ah,09h
+	lea dx,TEXT_REST_MENU
+	int 21h
 
-	BALL_X dw ?
-	BALL_Y dw ?
-	BALL1_X dw 80
-	BALL1_Y dw 150
-	BALL2_X dw 240
-	BALL2_Y dw 150
-	BaLL2_Xrec dw 240
-	BaLL2_Yrec dw 150
-	BALL_VELOCITY_X dw ?
-	BALL_VELOCITY_Y dw ?
-	BALL1_VELOCITY_X dw 2
-	BALL1_VELOCITY_Y dw -1
-	GAME_EXIT_FLAG db 0
-
-	CLEAR_TILE_OFFSET db 8
-
-	TIME DB 1
-
-	BRICKS_COLS EQU 8
-	BRICKS_COUNT EQU 48
-	PADDLE_VEL_MAG EQU 5
-
-	int9Seg DW ?
-	int9Off DW ?
-
-	COM EQU 03F8h
-.CODE
-
+RET
+Game_over_Screen ENDP
 SendAll PROC FAR
 
 SendBall_X:
@@ -271,29 +350,6 @@ exitReceiveAll:
 	RET
 ReceiveAll ENDP
 
-drawSeparator MACRO
-	LOCAL print
-	PUSHA
-	PUSHF
-
-	MOV   CX, 160
-	MOV   DX,0
-
-	MOV   AH,0ch
-	MOV   AL,0fh
-print:
-	INT   10h
-	DEC   CX
-	INT   10h
-	INC   CX
-	INC   DX
-	CMP   DX,200
-	JL    print
-
-	POPF
-	POPA
-ENDM
-
 
 MAIN PROC FAR
 	MOV AX, @DATA
@@ -333,7 +389,7 @@ menuLoop:
   JMP menuLoop
 
 playGame:
-	initGame
+	CALL initGame
 	setIntteruptHandle
 
 gameLoop:
@@ -341,7 +397,10 @@ gameLoop:
 	CMP DL, TIME
 	JE gameLoop
 	MOV TIME, DL
-
+	cmp GAME_OVER_FLAG,0
+	je Game_Over_Loop
+	cmp COUNT_TILES,48d
+	je Game_Over_Loop
 WaitForVSync:
 	MOV DX, 03DAh         ; VGA Input Status Register 1
 WaitForRetrace:
@@ -440,8 +499,32 @@ collisionLoop:
 	CALL drawPaddle
 
 	drawSeparator
-	
+
 	JMP gameLoop
+
+	Game_Over_Loop:
+	CALL Game_over_Screen
+	MOV AH, 00H         
+    INT 16H
+	cmp al,'Y'
+    je restgameLOOP
+	cmp al,'y'
+	je restgameLOOP
+	; cmp al,'N'
+	; je restmenu
+	; cmp al,'n'
+	; je restmenu
+    jmp exit_g
+	restgameLOOP:
+	mov GAME_OVER_FLAG,1
+	CALL initGame
+	; restmenu:
+	; CALL mainMenu
+	; mov GAME_OVER_FLAG,1
+
+exit_g:
+	JMP gameLoop
+
 gotoMainMenu:
 	resetInterruptHandle
 	call SendAll

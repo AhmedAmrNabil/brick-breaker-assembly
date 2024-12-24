@@ -5,6 +5,7 @@ EXTRN BALL2_Y:WORD
 EXTRN BALL_VELOCITY_X:WORD
 EXTRN BALL_VELOCITY_Y:WORD
 EXTRN PADDLE_X:WORD
+EXTRN GAME_OVER_FLAG:BYTE
 EXTRN clearTile:FAR
 
 PUBLIC checkCollision
@@ -24,6 +25,8 @@ PADDLE_WIDTH EQU 50
 PADDLE_HEIGHT EQU 10
 TILE_WIDTH  equ 20
 TILE_HEIGHT equ 10
+rest_position_X equ 80
+rest_position_Y equ 150
 BALL_VELOCITY_MAG EQU 1
 COLLISION_X dw ?
 COLLISION_Y dw ?
@@ -131,12 +134,19 @@ TopBoundary:
 ; Will be removed later for game over
 ; Check bottom boundary
 BottomBoundary:
-    CMP BX, SCREEN_HEIGHT - BALL_SIZE
+    cmp BX, SCREEN_HEIGHT - 15
     JL  skipBottomBoundary
-    NEG BALL_VELOCITY_Y
+    mov ax,rest_position_X
+    mov BALL_X,ax
+    mov ax,rest_position_Y
+    mov BALL_Y,ax
+    mov BALL_VELOCITY_X,  2
+	mov BALL_VELOCITY_Y,  -1
+    mov GAME_OVER_FLAG,0
     JMP EndCheck
 
 skipBottomBoundary:
+  
     CMP BX, 100
     JL skipPaddle
     call checkPaddleCollision
@@ -420,7 +430,7 @@ RightEdgeColor2:
     CMP AX, 0
     JNE BallCollided
 
-    JMP EndCheck
+    JMP EndCheck2
 
 ; Clear the tile above the ball
 BallCollided:
