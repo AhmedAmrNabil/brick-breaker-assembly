@@ -9,6 +9,7 @@ EXTRN drawPaddle:FAR
 EXTRN clearTile:FAR
 EXTRN TIME:BYTE
 EXTRN POWERUPSARR:BYTE
+EXTRN PADDLE_WIDTH:WORD
 
 PUBLIC checkCollision
 PUBLIC checkCollision2
@@ -23,7 +24,6 @@ PUBLIC checkCollision2
     SCREEN_HEIGHT EQU 200
     BALL_SIZE     EQU 5
     PADDLE_Y      EQU 180
-    PADDLE_WIDTH EQU 40
     PADDLE_HEIGHT EQU 10
     TILE_WIDTH  equ 20
     TILE_HEIGHT equ 10
@@ -62,6 +62,16 @@ setPowerUp:
     RET
 getPixelColor ENDP
 
+getPixelColor2 PROC FAR
+    MOV AX, 0
+
+    MOV AH, 0Dh
+    INT 10h
+    MOV AH, 0
+
+    RET
+getPixelColor2 ENDP
+
 LCG PROC FAR
 	PUSHA
 	MOV EAX, SEED
@@ -99,11 +109,11 @@ resetPowerups:
 
     MOV EAX, SEED
     MOV EDX, 0
-    MOV ECX, 2
+    MOV ECX, 3
     DIV ECX
 
     MOV SI, DX
-    MOV POWERUPSARR[SI], 100
+    MOV POWERUPSARR[SI], 127
 
 ExitCheckPowerup:
     RET
@@ -131,16 +141,23 @@ checkPaddleX:
     CMP AX, BALL_X
     JLE  endCheckPaddle
     
+    MOV AX, PADDLE_WIDTH
+    MOV CL,2
+    DIV CL
+    MOV AH,0
+    SUB AL,7
+    MOV DX,AX
+   
     MOV AX, BALL_X
     ADD AX, BALL_SIZE / 2
     MOV BX, PADDLE_X
-    ADD BX,5
+    ADD BX,7
     CMP AX,BX
     JL farLeft
-    ADD BX,15
+    ADD BX,DX
     CMP AX,BX
     JL nearLeft
-    ADD BX,15
+    ADD BX,DX
     CMP AX,BX
     JL nearRight
     JMP farRight
@@ -434,7 +451,7 @@ TopEdgeColor2:
     MOV DX, BALL2_Y
     DEC DX
     DEC DX
-    CALL getPixelColor
+    CALL getPixelColor2
     CMP AX, 0
     JNE BallCollided
 
@@ -443,7 +460,7 @@ TopEdgeColor2:
     DEC DX
     DEC DX
     ADD CX, BALL_SIZE - 1
-    CALL getPixelColor
+    CALL getPixelColor2
     CMP AX, 0
     JNE BallCollided
 
@@ -452,7 +469,7 @@ BottomEdgeColor2:
     MOV DX, BALL2_Y
     ADD DX, BALL_SIZE
     INC DX
-    CALL getPixelColor
+    CALL getPixelColor2
     CMP AX, 0
     JNE BallCollided
 
@@ -461,7 +478,7 @@ BottomEdgeColor2:
     ADD DX, BALL_SIZE
     INC DX
     ADD CX, BALL_SIZE - 1
-    CALL getPixelColor
+    CALL getPixelColor2
     CMP AX, 0
     JNE BallCollided
 
@@ -471,7 +488,7 @@ LeftEdgeColor2:
     DEC CX
     DEC CX
     MOV DX, BALL2_Y
-    CALL getPixelColor
+    CALL getPixelColor2
     CMP AX, 0
     JNE BallCollided
 
@@ -480,7 +497,7 @@ LeftEdgeColor2:
     DEC CX
     MOV DX, BALL2_Y
     ADD DX, BALL_SIZE - 1
-    CALL getPixelColor
+    CALL getPixelColor2
     CMP AX, 0
     JNE BallCollided
 
@@ -489,7 +506,7 @@ RightEdgeColor2:
     ADD CX, BALL_SIZE
     INC CX
     MOV DX, BALL2_Y
-    CALL getPixelColor
+    CALL getPixelColor2
     CMP AX, 0
     JNE BallCollided
 
@@ -498,7 +515,7 @@ RightEdgeColor2:
     INC CX
     MOV DX, BALL2_Y
     ADD DX, BALL_SIZE - 1
-    CALL getPixelColor
+    CALL getPixelColor2
     CMP AX, 0
     JNE BallCollided
 

@@ -1,5 +1,6 @@
 EXTRN drawTile:FAR
 EXTRN drawPaddle:FAR
+EXTRN drawPaddle2:FAR
 EXTRN drawBall:FAR
 EXTRN drawColoredTile:FAR
 EXTRN clearBall:FAR
@@ -32,6 +33,8 @@ PUBLIC LCG
 PUBLIC SEED
 PUBLIC POWERUPSARR
 PUBLIC PADDLE_VEL_MAG
+PUBLIC PADDLE_WIDTH
+PUBLIC PADDLE2_WIDTH
 
 getSystemTime MACRO
 	MOV AH, 2CH    ;get the system time
@@ -240,6 +243,8 @@ ENDM
 	PADDLE1_X dw 50
 	PADDLE2_X dw 210
 	PADDLE2_X2 dw 210
+	PADDLE_WIDTH dw 40
+	PADDLE2_WIDTH dw 40
 
 	BALL_X dw ?
 	BALL_Y dw ?
@@ -596,7 +601,10 @@ ReceiveAll ENDP
 powerups PROC FAR
 	PUSHA
 
-MOV PADDLE_VEL_MAG, 4
+	MOV DX,PADDLE_WIDTH
+
+	MOV PADDLE_VEL_MAG, 4
+	MOV PADDLE_WIDTH,40
 
 checkSpeedUpPaddle:
 	MOV AL, POWERUPSARR[0]
@@ -605,20 +613,38 @@ checkSpeedUpPaddle:
 
 	DEC POWERUPSARR[0]
 	MOV PADDLE_VEL_MAG, 8
-	JMP checkBallSpeed
+	JMP checkPaddleSize
 
 checkSlowDownPaddle:
 	MOV AL, POWERUPSARR[1]
 	CMP AL, 0
-	JE checkBallSpeed
+	JE checkPaddleSize
 
 	DEC POWERUPSARR[1]
 	MOV PADDLE_VEL_MAG, 2
-	JMP checkBallSpeed
+	JMP checkPaddleSize
 
-checkBallSpeed:
+checkPaddleSize:
+	MOV AL, POWERUPSARR[2]
+	CMP AL, 0
+	JE EndPowerups
+
+	DEC POWERUPSARR[2]
+	MOV PADDLE_WIDTH, 60
+	JMP EndPowerups
 
 EndPowerups:
+	CMP DX,PADDLE_WIDTH
+	JE actuallyExitPowerups
+	MOV CX,PADDLE_WIDTH
+	PUSH CX
+	MOV PADDLE_WIDTH,DX
+	CALL clearPaddle
+	POP CX
+	MOV PADDLE_WIDTH,CX
+	call drawPaddle
+
+actuallyExitPowerups:
 	POPA
 	RET
 powerups ENDP
@@ -764,9 +790,9 @@ collisionLoop:
 	; Player 2 paddle                     ;
 	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+	drawSeparator
 	MOV AX, PADDLE2_X
 	CMP AX, PADDLE2_X2
-	drawSeparator
 	JE gameLoop
 
 	MOV PADDLE_X, AX
@@ -775,7 +801,7 @@ collisionLoop:
 	MOV AX, PADDLE2_X2
 	MOV PADDLE2_X, AX
 	MOV PADDLE_X, AX
-	CALL drawPaddle
+	CALL drawPaddle2
 
 	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 	; End Player 2 paddle                 ;

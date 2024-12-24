@@ -1,12 +1,15 @@
 EXTRN PADDLE_X:WORD
+EXTRN PADDLE_WIDTH:WORD
+EXTRN PADDLE2_WIDTH:WORD
+
 PUBLIC drawPaddle
+PUBLIC drawPaddle2
 PUBLIC clearPaddle
 
 .MODEL SMALL
 .STACK 100h
 
 .DATA
-PADDLE_WIDTH equ 40
 PADDLE_HEIGHT equ 10
 EDGE_WIDTH equ 2
 PADDLE_Y equ 180
@@ -59,6 +62,54 @@ drawPaddle PROC FAR
 
         RET
 drawPaddle ENDP
+
+drawPaddle2 PROC FAR
+    MOV DX, PADDLE_Y             
+    drawRow2:
+        PUSH DX                       
+        MOV CX, PADDLE_X             
+
+    drawPixel2:
+        MOV AX, CX
+        SUB AX, PADDLE_X
+        CMP AX, EDGE_WIDTH
+        JL drawRed2                   
+
+        MOV AX, CX
+        SUB AX, PADDLE_X
+        MOV BX,PADDLE2_WIDTH
+        SUB BX,AX
+        CMP BX,EDGE_WIDTH
+        JLE drawRed2                 
+
+    drawGrey2:
+        MOV AH, 0Ch
+        MOV AL, 08h                   
+        MOV BH, 00h
+        INT 10h
+        JMP nextPixel2
+
+    drawRed2:
+        MOV AH, 0Ch
+        MOV AL, 04h                   
+        MOV BH, 00h
+        INT 10h
+
+    nextPixel2:
+        INC CX                     
+        MOV AX, CX
+        SUB AX, PADDLE_X
+        CMP AX, PADDLE2_WIDTH
+        JL drawPixel2                
+        POP DX                        
+        INC DX                         
+        MOV AX, DX
+        SUB AX, PADDLE_Y
+        CMP AX, PADDLE_HEIGHT
+        JL drawRow2
+
+        RET
+drawPaddle2 ENDP
 
 clearPaddle PROC FAR
     MOV DX, PADDLE_Y             
