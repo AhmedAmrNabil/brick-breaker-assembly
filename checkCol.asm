@@ -33,6 +33,10 @@ PUBLIC checkCollision2
     COLLISION_X_FLAG db ?
     COLLISION_Y_FLAG db ?
     POWERUP_FLAG DB 0
+    SEED DD 5970917
+	MULTIPLIER EQU 22695477	
+	INCREMENT EQU 1
+	MODULUS EQU 2147483647
 
 .CODE
 getPixelColor PROC FAR
@@ -58,14 +62,25 @@ setPowerUp:
     RET
 getPixelColor ENDP
 
+LCG PROC FAR
+	PUSHA
+	MOV EAX, SEED
+	MOV EBX, MULTIPLIER
+	MUL EBX
+	ADD EAX, INCREMENT
+	MOV SEED, EAX
+	MOV EDX, 0
+	MOV EBX,MODULUS
+	DIV EBX
+	MOV SEED, EDX
+	MOV EAX, EDX
+	POPA
+	RET
+LCG ENDP
+
 checkPowerup PROC FAR
     CMP POWERUP_FLAG, 1
     JNE ExitCheckPowerup
-
-    MOV AH, 00h
-	INT 1Ah
-    SHR DX, 1
-    AND DX, 1
 
     MOV ECX, 5
     MOV SI, 0
@@ -73,6 +88,19 @@ resetPowerups:
     MOV POWERUPSARR[SI], 0
     INC SI
     LOOP resetPowerups
+
+    MOV AH, 00h
+	INT 1Ah
+    MOV EAX, CX
+    SHL EAX, 16
+    MOV AX, DX
+    MOV SEED, EAX
+    CALL LCG
+
+    MOV EAX, SEED
+    MOV EDX, 0
+    MOV ECX, 2
+    DIV ECX
 
     MOV SI, DX
     MOV POWERUPSARR[SI], 100
