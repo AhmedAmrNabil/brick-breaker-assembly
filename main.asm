@@ -1,8 +1,11 @@
 EXTRN drawTile:FAR
 EXTRN drawPaddle:FAR
+EXTRN drawPaddle2:FAR
 EXTRN drawBall:FAR
+EXTRN drawColoredTile:FAR
 EXTRN clearBall:FAR
 EXTRN clearPaddle:FAR
+EXTRN clearPaddle2:FAR
 EXTRN checkInput:FAR
 EXTRN moveBall:FAR
 EXTRN checkCollision:FAR
@@ -26,56 +29,112 @@ PUBLIC BALL_VELOCITY_X
 PUBLIC BALL_VELOCITY_Y
 PUBLIC CLEAR_TILE_OFFSET
 PUBLIC GAME_EXIT_FLAG
+PUBLIC TIME
+PUBLIC LCG
+PUBLIC SEED
+PUBLIC POWERUPSARR
+PUBLIC PADDLE_VEL_MAG
+PUBLIC PADDLE_WIDTH
+PUBLIC PADDLE2_WIDTH
+PUBLIC SKIP_PADDLE_CHECK
 
 getSystemTime MACRO
-	MOV AH,2CH    ;get the system time
+	MOV AH, 2CH    ;get the system time
 	INT 21H       ; CH = hour, CL = minute, DH = seconds, DL = 1/100s
 ENDM
 
 setIntteruptHandle MACRO
 ;getting int09h interrupt vector handler
-	cli                       ;turn off interrupt flag
-	pusha
+	CLI                       ;turn off interrupt flag
+	PUSHA
 ;get the interrupt 09 address
-	mov   ax,3509h
-	int   21h
+	MOV   AX,3509h
+	INT   21h
 
 ;save the original interrupt address
-	mov   int9Off, bx
-	mov   int9Seg, es
-	popa
+	MOV   int9Off, BX
+	MOV   int9Seg, es
+	POPA
 
-;setting the new int 09h interrupt vector handler
-	push  ds
-	mov   ax,cs
-	mov   ds,ax               ;load the segment of the new interrupt
-	lea   dx,checkInput    ;load the offset of the new interrupt
-	mov   ax,2509h            ; int 21/25h at interrupt 09
-	int   21h
-	pop   ds
-	sti
+;setting the new INT 09h interrupt vector handler
+	PUSH  DS
+	MOV   AX,cs
+	MOV   DS,AX               ;load the segment of the new interrupt
+	LEA   DX,checkInput    ;load the offset of the new interrupt
+	MOV   AX,2509h            ; INT 21/25h at interrupt 09
+	INT   21h
+	POP   DS
+	STI
 ENDM
 
 resetInterruptHandle MACRO
-	cli
+	CLI
 
-	mov  ax,int9Seg
-	mov  dx,int9Off
-	push ds
-	mov  ds,ax
-	mov  ax,2509h
-	int  21h
-	pop  ds
+	MOV  AX,int9Seg
+	MOV  DX,int9Off
+	PUSH DS
+	MOV  DS,AX
+	MOV  AX,2509h
+	INT  21h
+	POP  DS
 
-	sti
+	STI
 ENDM
 
+initSerialPort MACRO
+	; Set divisor Latch Acess bit
+	MOV DX, COM + 3
+	MOV AX, 10000000b
+	OUT DX, AL
+
+	;Set LSB of the Baud Rate Divisor Latch register
+	MOV DX, COM
+	MOV AL, 01h
+	OUT DX, AL
+
+	;Set MSB of the Baud Rate Divisor Latch register
+	MOV DX, COM + 1
+	MOV AL, 00h
+	OUT DX, AL
+
+	; Set Port config
+	; transrecieve buffer,set break disabled, even parity, one stop bit, 8 bit word
+	MOV DX, COM + 3
+	MOV AX, 00011011b
+	OUT DX, AL
+ENDM
+
+drawSeparator MACRO
+	LOCAL print
+	PUSHA
+	PUSHF
+
+	MOV   CX, 160
+	MOV   DX,0
+
+	MOV   AH,0ch
+	MOV   AL,0fh
+print:
+	INT   10h
+	DEC   CX
+	INT   10h
+	INC   CX
+	INC   DX
+	CMP   DX,200
+	JL    print
+
+	POPF
+	POPA
+ENDM
 
 initGame MACRO
 	; set video mode to 320x200 256-color mode
 	MOV AH, 0
 	MOV AL, 13h
 	INT 10h
+
+	; set initial values
+	MOV GAMELOOP_SPEED, 2
 	MOV GAME_EXIT_FLAG,0
 	MOV PADDLE1_X , 50
 	MOV PADDLE2_X , 210
@@ -88,8 +147,21 @@ initGame MACRO
 	MOV BaLL2_Yrec , 150
 	MOV BALL1_VELOCITY_X , 1
 	MOV BALL1_VELOCITY_Y , -2
+	MOV PADDLE_WIDTH,40
+	MOV PADDLE2_WIDTH,40
 
-		; draw the bricks (player 1)
+	; reset powerups (todo)
+
+	MOV CX,5
+	MOV SI,0
+resetPowerups:
+	MOV POWERUPSARR[SI],0
+	INC SI
+	LOOP resetPowerups
+
+	MOV SKIP_PADDLE_CHECK, 0
+
+	; draw the bricks (player 1)
 	MOV CL, BRICKS_COLS
 	MOV DX, 0
 printLoop1:
@@ -113,6 +185,39 @@ printLoop2:
 	INC DX
 	CMP DX, BRICKS_COUNT
 	JL printLoop2
+
+	MOV CH, 0
+	MOV CL, POWERUP_COUNT_1
+	MOV SI,0
+powerupLoop1:
+	PUSH CX
+	MOV DL, myRandomTiles[SI]
+	INC SI
+	MOV DH,0
+	MOV AX,DX
+	MOV CL,8
+	DIV CL
+	XCHG AL, AH
+	CALL drawColoredTile
+	POP CX
+	LOOP powerupLoop1	
+
+	MOV CH, 0
+	MOV CL, POWERUP_COUNT_2
+	MOV SI, 0
+powerupLoop2:
+	PUSH CX
+	MOV DH, 0
+	MOV DL, enemyRandomTiles[SI]
+	INC SI
+	MOV AX, DX
+	MOV CL, BRICKS_COLS
+	DIV CL
+	XCHG AL, AH
+	ADD AL, 8
+	CALL drawColoredTile
+	POP CX
+	LOOP powerupLoop2	
 
 	; draw the paddle (player 1)
 	MOV AX, PADDLE1_X
@@ -142,19 +247,19 @@ printLoop2:
 	drawSeparator
 ENDM
 
-
 .MODEL small
 .386
 
 .STACK 100h
 .DATA
-
 	PADDLE1_VEL_X dw 0
-	
+
 	PADDLE_X dw ?
 	PADDLE1_X dw 50
 	PADDLE2_X dw 210
 	PADDLE2_X2 dw 210
+	PADDLE_WIDTH dw 40
+	PADDLE2_WIDTH dw 40
 
 	BALL_X dw ?
 	BALL_Y dw ?
@@ -169,156 +274,429 @@ ENDM
 	BALL1_VELOCITY_X dw 2
 	BALL1_VELOCITY_Y dw -1
 	GAME_EXIT_FLAG db 0
+	POWERUP_COUNT_1 db 0
+	POWERUP_COUNT_2 db 0
+
+	GAMELOOP_SPEED dw 2
 
 	CLEAR_TILE_OFFSET db 8
 
-	TIME DB 1
+	TIME DB 0
 
 	BRICKS_COLS EQU 8
 	BRICKS_COUNT EQU 48
-	PADDLE_VEL_MAG EQU 5
+	PADDLE_VEL_MAG dw 4
+	BALL_SIZE EQU 5
 
 	int9Seg DW ?
 	int9Off DW ?
+	SEED DD 5970917
+	MULTIPLIER EQU 22695477	
+	INCREMENT EQU 1
+	MODULUS EQU 2147483647
+
+	myRandomTiles DB 5 dup(0)
+	enemyRandomTiles DB 5 dup(0)
+
+	waitingMessage db 'Waiting for another player$'
+
+	POWERUPSARR db 5 dup(0)
+
+	SKIP_PADDLE_CHECK db 0
 
 	COM EQU 03F8h
 .CODE
 
+LCG PROC FAR
+	PUSHA
+	MOV EAX, SEED
+	MOV EBX, MULTIPLIER
+	MUL EBX
+	ADD EAX, INCREMENT
+	MOV SEED, EAX
+	MOV EDX, 0
+	MOV EBX,MODULUS
+	DIV EBX
+	MOV SEED, EDX
+	MOV EAX, EDX
+	POPA
+	RET
+LCG ENDP
+
+generateRandomBricks PROC FAR
+	PUSHA
+	PUSHF
+
+	; generate seed with system time
+	MOV AH, 00h
+	INT 1Ah
+	MOV AX,CX
+	SHL EAX, 16
+	MOV AX,DX
+	MOV SEED, EAX
+
+	; generate random powerup count
+	MUL EAX
+	SHR EAX, 15
+	AND EAX,00000003h
+	ADD EAX,2
+	MOV POWERUP_COUNT_1,AL
+
+	; generate random bricks
+	MOV CH, 0
+	MOV CL, POWERUP_COUNT_1
+	MOV SI, 0
+randomBricksLoop:
+	PUSH CX
+	CALL LCG
+	MOV EAX,SEED
+	MOV ECX,48
+	XOR EDX,EDX
+	DIV ECX
+	MOV myRandomTiles[SI], DL
+	INC SI
+	POP CX
+	LOOP randomBricksLoop
+
+	POPF
+	POPA
+	RET
+generateRandomBricks ENDP
+
+loadingScreen PROC FAR
+	PUSHA
+	PUSHF
+
+	; Show loading screen
+	MOV AH, 0
+	MOV AL, 03h
+	INT 10h
+	
+	MOV AH, 09h
+	LEA DX, waitingMessage
+	INT 21h
+
+StartSendRandomByte:
+	MOV DX, COM + 5
+	IN AL, DX
+	TEST AL, 00100000b
+	JZ StartSendRandomByte
+
+	MOV DX, COM
+	MOV AL, 0FEh
+	OUT DX, AL
+
+sendPowerupCount:
+	MOV DX, COM + 5
+	IN AL, DX
+	TEST AL, 00100000b
+	JZ sendPowerupCount
+
+	MOV DX, COM
+	MOV AL, POWERUP_COUNT_1
+	OUT DX, AL
+
+	MOV CX, 0
+	MOV CL, POWERUP_COUNT_1
+	MOV SI, 0
+sendRandomLoop:
+	PUSH CX
+sendRandomLoop2:
+	MOV DX, COM + 5
+	IN AL, DX
+	TEST AL, 00100000b
+	JZ sendRandomLoop2
+
+	MOV AL, myRandomTiles[SI]
+	INC SI
+	MOV DX, COM
+	OUT DX, AL
+
+	POP CX
+	LOOP sendRandomLoop
+
+receiveStartRandomByte:
+	MOV DX, COM + 5
+	IN AL, DX
+	TEST AL, 1
+	JZ receiveStartRandomByte
+
+	MOV DX, COM
+	IN AL, DX
+	CMP AL, 0FEh
+	JNE receiveStartRandomByte
+
+receivePowerupCount:
+	MOV DX, COM + 5
+	IN AL, DX
+	TEST AL, 1
+	JZ receivePowerupCount
+
+	MOV DX, COM
+	IN AL, DX
+	MOV POWERUP_COUNT_2, AL
+
+	MOV CX, 0
+	MOV CL, POWERUP_COUNT_2
+	MOV SI, 0
+receiveRandomLoop:
+	PUSH CX
+receiveRandomLoop2:
+	MOV DX, COM + 5
+	IN AL, DX
+	TEST AL, 00000001b
+	JZ receiveRandomLoop2
+
+	MOV DX, COM
+	IN AL, DX
+
+	CMP AL, 0FFh
+	JE receiveRandomLoop2
+	CMP AL, 0FEh
+	JE receiveRandomLoop2
+	
+	MOV enemyRandomTiles[SI],AL
+	INC SI
+	
+	POP CX
+	LOOP receiveRandomLoop
+
+FinalStartSendRandomByte:
+	MOV DX, COM + 5
+	IN AL, DX
+	TEST AL, 00100000b
+	JZ FinalStartSendRandomByte
+
+	MOV DX, COM
+	MOV AL, 0FEh
+	OUT DX, AL 
+
+finalSendPowerupCount:
+	MOV DX, COM + 5
+	IN AL, DX
+	TEST AL, 00100000b
+	JZ finalSendPowerupCount
+
+	MOV DX, COM
+	MOV AL, POWERUP_COUNT_1
+	OUT DX, AL
+
+	MOV CX, 0
+	MOV CL, POWERUP_COUNT_1
+	MOV SI, 0
+finalSendRandomLoop:
+	PUSH CX
+finalSendRandomLoop2:
+	MOV DX, COM + 5
+	IN AL, DX
+	TEST AL, 00100000b
+	JZ finalSendRandomLoop2
+
+	MOV AL, myRandomTiles[SI]
+	INC SI
+	MOV DX, COM
+	OUT DX, AL
+
+	POP CX
+	LOOP finalSendRandomLoop
+
+	POPF
+	POPA
+
+	RET
+loadingScreen ENDP
+
 SendAll PROC FAR
+	MOV DX, COM + 5
+	IN AL, DX
+	TEST AL, 00100000b
+	JZ exitSendAll
+
+	MOV DX, COM
+	MOV AL, 0FDh
+	CMP GAME_EXIT_FLAG, 1
+	JNE continueStartSendByte
+	MOV AL, 0FFh
+	OUT DX, AL
+	JMP exitSendAll
+continueStartSendByte:
+	OUT DX, AL   
 
 SendBall_X:
-	mov               dx,COM+5        ; Line Status Register
-	in                al,dx           ;Read Line Status
-	test              al,00100000b
-	jz                exitSendAll       
+	MOV DX, COM + 5
+	IN AL, DX
+	TEST AL, 00100000b
+	JZ SendBall_X       
 
-	mov               dx, COM         ; Transmit data register
-	mov               al, byte ptr BALL1_X       ; put the data into al
-	out               dx, al          ; sending the data
+	MOV DX, COM
+	MOV AL, BYTE PTR BALL1_X
+	OUT DX, AL
 
 SendBall_Y:
-	mov               dx,COM+5        ; Line Status Register
-	in                al,dx           ;Read Line Status
-	test              al,00100000b
-	jz                SendBall_Y       ;Recieve if not empty
+	MOV DX, COM + 5
+	IN AL, DX
+	TEST AL, 00100000b
+	JZ SendBall_Y
 
-	mov               dx,COM          ; Transmit data register
-	mov               al, byte ptr BALL1_Y       ; put the data into al
-	CMP GAME_EXIT_FLAG,1
-	JNE continueSendBallY
-	mov al, 0FFh
-continueSendBallY:
-	out               dx,al           ; sending the data
+	MOV DX, COM
+	MOV AL, BYTE PTR BALL1_Y
+	OUT DX, AL
 
 SendPaddle:
-	mov               dx,COM+5        ; Line Status Register
-	in                al,dx           ;Read Line Status
-	test              al,00100000b
-	jz                SendPaddle       ;Recieve if not empty
+	MOV DX, COM + 5
+	IN AL, DX
+	TEST AL, 00100000b
+	JZ SendPaddle
 
-	mov               dx,COM          ; Transmit data register
-	mov               al, byte ptr PADDLE1_X       ; put the data into al
-	out               dx,al           ; sending the data
+	MOV DX, COM
+	MOV AL, BYTE PTR PADDLE1_X
+	CMP PADDLE_WIDTH, 60
+	JNE continueSendPaddle
+	OR AL, 10000000b
+continueSendPaddle:
+	OUT DX, AL
 
 exitSendAll:
-    RET
+	RET
 SendAll ENDP
+
+
 
 ReceiveAll PROC FAR
 
-WaitPaddleX:
-	mov dx,COM+5        ;check if data is ready
-	in al,dx
-	test al,1
-	jz exitReceiveAll        ;if not check for sending
+WaitForReceiveByte:
+	MOV DX, COM + 5
+	IN AL, DX
+	TEST AL, 1
+	JZ WaitForReceiveByte
 
-	mov dx, COM
-	in al, dx           ;read data from reg
-	MOV AH, 0
-	ADD AX, 160 
-	MOV PADDLE2_X2, AX
+	MOV DX, COM
+	IN AL, DX
+	CMP AL, 0FFh
+	JNE continueWaitForReceiveByte
+	MOV GAME_EXIT_FLAG, 1
+	JMP exitReceiveAll
+
+continueWaitForReceiveByte:
+	CMP AL, 0FDh
+	JNE WaitForReceiveByte
 
 WaitBallX:
-	mov dx, COM+5        ;check if data is ready
-	in al, dx
-	test al, 1
-	jz  WaitBallX       ;if not check for sending
+	MOV DX, COM + 5
+	IN AL, DX
+	TEST AL, 1
+	JZ  WaitBallX
 
-	mov dx, COM
-	in al, dx           ;read data from reg
+	MOV DX, COM
+	IN AL, DX
 	
 	MOV AH, 0
 	ADD AX, 160          
 	MOV BaLL2_Xrec, AX
 
 WaitBallY:
-	mov dx, COM+5        ;check if data is ready
-	in al, dx
-	test al, 1
-	jz WaitBallY        ;if not check for sending
+	MOV DX, COM + 5
+	IN AL, DX
+	TEST AL, 1
+	JZ WaitBallY
 	
-	mov dx, COM
-	in al, dx           ;read data from reg
-	CMP al,0FFh
-	JNE continueBallY
-	MOV GAME_EXIT_FLAG, 1
-
-continueBallY:	
+	MOV DX, COM
+	IN AL, DX
 	MOV AH, 0
 	MOV BaLL2_Yrec, AX
+
+WaitPaddleX:
+	MOV DX, COM + 5
+	IN AL, DX
+	TEST AL, 1
+	JZ WaitPaddleX
+
+	MOV DX, COM
+	IN AL, DX
+	MOV AH, 0
+
+	TEST AL, 10000000b
+	JZ resetSkipPaddleFlag
+	MOV PADDLE2_WIDTH, 60
+	MOV SKIP_PADDLE_CHECK, 1
+	AND AL, 01111111b
+	JMP continueWaitPaddleX
+
+resetSkipPaddleFlag:
+	CMP PADDLE2_WIDTH,60
+	JNE continuepaddlewidthx
+	call clearPaddle2
+
+continuepaddlewidthx:	
+	MOV PADDLE2_WIDTH, 40
+	MOV SKIP_PADDLE_CHECK, 0
+
+continueWaitPaddleX:
+	ADD AX, 160 
+	MOV PADDLE2_X2, AX
 
 exitReceiveAll:
 	RET
 ReceiveAll ENDP
 
-drawSeparator MACRO
-	LOCAL print
+powerups PROC FAR
 	PUSHA
-	PUSHF
 
-	MOV   CX, 160
-	MOV   DX,0
+	MOV DX,PADDLE_WIDTH
 
-	MOV   AH,0ch
-	MOV   AL,0fh
-print:
-	INT   10h
-	DEC   CX
-	INT   10h
-	INC   CX
-	INC   DX
-	CMP   DX,200
-	JL    print
+	MOV PADDLE_VEL_MAG, 4
+	MOV PADDLE_WIDTH,40
 
-	POPF
+checkSpeedUpPaddle:
+	MOV AL, POWERUPSARR[0]
+	CMP AL, 0
+	JE checkSlowDownPaddle
+
+	DEC POWERUPSARR[0]
+	MOV PADDLE_VEL_MAG, 8
+	JMP checkPaddleSize
+
+checkSlowDownPaddle:
+	MOV AL, POWERUPSARR[1]
+	CMP AL, 0
+	JE checkPaddleSize
+
+	DEC POWERUPSARR[1]
+	MOV PADDLE_VEL_MAG, 2
+	JMP checkPaddleSize
+
+checkPaddleSize:
+	MOV AL, POWERUPSARR[2]
+	CMP AL, 0
+	JE EndPowerups
+
+	DEC POWERUPSARR[2]
+	MOV PADDLE_WIDTH, 60
+	JMP EndPowerups
+
+EndPowerups:
+	CMP DX,PADDLE_WIDTH
+	JE actuallyExitPowerups
+	MOV CX,PADDLE_WIDTH
+	PUSH CX
+	MOV PADDLE_WIDTH,DX
+	CALL clearPaddle
+	POP CX
+	MOV PADDLE_WIDTH,CX
+	MOV SKIP_PADDLE_CHECK,1
+	CALL movePaddle1
+	call drawPaddle
+
+actuallyExitPowerups:
 	POPA
-ENDM
-
+	RET
+powerups ENDP
 
 MAIN PROC FAR
 	MOV AX, @DATA
 	MOV DS, AX
 
-	; Set divisor Latch Acess bit
-	mov dx,COM+3
-	mov ax,10000000b
-	out dx,al
-
-;Set LSB of the Baud Rate Divisor Latch register
-	mov dx,COM
-	mov al,1
-	out dx,al
-
-;Set MSB of the Baud Rate Divisor Latch register
-	mov dx,COM+1
-	mov al,00h
-	out dx,al
-
-; Set Port config
-; transrecieve buffer,set break disabled, even parity, one stop bit, 8 bit word
-	mov dx,COM+3
-	mov ax,00011011b
-	out dx,al
+	initSerialPort
 
 menuLoop:
     CALL mainMenu
@@ -333,6 +711,10 @@ menuLoop:
   JMP menuLoop
 
 playGame:
+	CALL generateRandomBricks
+
+	CALL loadingScreen
+
 	initGame
 	setIntteruptHandle
 
@@ -342,6 +724,8 @@ gameLoop:
 	JE gameLoop
 	MOV TIME, DL
 
+	CALL powerups
+
 WaitForVSync:
 	MOV DX, 03DAh         ; VGA Input Status Register 1
 WaitForRetrace:
@@ -349,13 +733,18 @@ WaitForRetrace:
 	TEST AL, 08H          ; Check the Vertical Retrace bit (bit 3)
 	JZ WaitForRetrace     ; Loop until retrace starts
 
-	mov cx,3
+	MOV CX, GAMELOOP_SPEED
 collisionLoop:
-	push cx
-	cmp GAME_EXIT_FLAG, 1
+	PUSH CX
+	CMP GAME_EXIT_FLAG, 1
 	JE gotoMainMenu
+
 	CALL SendAll
 	CALL ReceiveAll
+
+	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+	; Player 1 ball                       ;
+	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 	MOV AX, BALL1_X
 	MOV BALL_X, AX
@@ -370,7 +759,6 @@ collisionLoop:
 	MOV BALL_VELOCITY_Y, AX
 
 	CALL clearBall
-
 
 	MOV AL, 0
 	MOV CLEAR_TILE_OFFSET, AL
@@ -391,8 +779,13 @@ collisionLoop:
 	MOV AX, BALL_Y
 	MOV BALL1_Y, AX
 
+	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+	; End Player 1 ball                   ;
+	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+	; Player 2 ball                       ;
+	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 	MOV AX, BALL2_X
 	MOV BALL_X, AX
@@ -411,41 +804,56 @@ collisionLoop:
 	MOV BALL_Y, AX
 
 	CALL drawBall
-		pop cx
-	dec cx
-	cmp cx,0
-	je skipLoop
-	jmp collisionLoop
-	skipLoop:
+	POP CX
+	DEC CX
+	CMP CX,0
+	JE skipLoop
+	JMP collisionLoop
 
 	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+	; End Player 2 ball                   ;
+	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+	; Player 2 paddle                     ;
+	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-
-	CALL movePaddle1
-
-	MOV AX, PADDLE2_X
-	CMP AX, PADDLE2_X2
-	drawSeparator
-	JE gameLoop
-
-	
+skipLoop:
+	; MOV AX, PADDLE2_X
+	; CMP AX, PADDLE2_X2
+	; JE skipDrawPaddle2
 
 	MOV PADDLE_X, AX
-	CALL clearPaddle
+	CALL clearPaddle2
 	
 	MOV AX, PADDLE2_X2
 	MOV PADDLE2_X, AX
 	MOV PADDLE_X, AX
-	CALL drawPaddle
+	CALL drawPaddle2
+
+skipDrawPaddle2:
+
+	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+	; End Player 2 paddle                 ;
+	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+	; Player 1 paddle                     ;
+	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+	CALL movePaddle1
+
+	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+	; End Player 1 paddle                 ;
+	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 	drawSeparator
-	
+
 	JMP gameLoop
 gotoMainMenu:
 	resetInterruptHandle
 	call SendAll
-	jmp menuLoop
+	JMP menuLoop
 
 chatOption:  
 	CALL Chat

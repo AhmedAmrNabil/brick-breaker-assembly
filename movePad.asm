@@ -4,6 +4,8 @@ EXTRN PADDLE1_VEL_X:WORD
 EXTRN PADDLE2_X:WORD
 EXTRN drawPaddle:FAR
 EXTRN clearPaddle:FAR
+EXTRN PADDLE_WIDTH:WORD
+EXTRN SKIP_PADDLE_CHECK:WORD
 
 PUBLIC movePaddle1
 
@@ -13,32 +15,53 @@ PUBLIC movePaddle1
 .STACK 100h
 
 .DATA
-	PADDLE_WIDTH EQU 40
 
 .CODE
 movePaddle1 PROC FAR
+	MOV AX, SKIP_PADDLE_CHECK
+	CMP AX, 1
+	JE movePaddle1End
 
 	CMP PADDLE1_VEL_X,0
 	JE skipMovePaddle1
 
-	MOV AX, PADDLE1_X
-	ADD AX, PADDLE1_VEL_X
-	CMP AX, 0
-	JL skipMovePaddle1
-	CMP AX, 160 - PADDLE_WIDTH
-	JG skipMovePaddle1
-
+movePaddle1End:
 	MOV AX, PADDLE1_X
 	MOV PADDLE_X, AX
 	CALL clearPaddle
 
 	MOV AX, PADDLE1_X
 	ADD AX, PADDLE1_VEL_X
-	MOV PADDLE1_X, AX
+	CMP AX, 0
+	JLE setPaddleStart
+	MOV DX,160
+	SUB DX, PADDLE_WIDTH
+	CMP AX, DX
+	JGE setPaddleEnd
+	JMP movePad
+
+setPaddleStart:
+	MOV PADDLE1_X,0
+	JMP skipMovement
+
+setPaddleEnd:
+	MOV DX,160
+	SUB DX, PADDLE_WIDTH
+	MOV PADDLE1_X, DX
+	JMP skipMovement
+
+MovePad:
+	MOV AX, PADDLE1_X
+	ADD AX, PADDLE1_VEL_X
+	MOV PADDLE1_X,AX
+
+skipMovement:
+	MOV AX,PADDLE1_X
 	MOV PADDLE_X, AX
 	CALL drawPaddle
 
 skipMovePaddle1:
+	MOV SKIP_PADDLE_CHECK,0
 	RET
 movePaddle1 ENDP
 
