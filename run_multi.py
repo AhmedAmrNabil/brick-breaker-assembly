@@ -4,7 +4,7 @@ from time import sleep
 
 filedata = r"""
 [cpu]
-cycles = fixed 10000
+cycles = max
 [sdl]
 fullresolution=640x400
 windowresolution=640x400
@@ -51,7 +51,7 @@ filedata1 = (
     filedata
     + r"""
 [serial]
-serial1=directserial realport:COM5
+serial1=directserial realport:COM1
     """
 )
 
@@ -59,7 +59,7 @@ filedata2 = (
     filedata
     + r"""
 [serial]
-serial1=directserial realport:COM6
+serial1=directserial realport:COM2
     """
 )
 
