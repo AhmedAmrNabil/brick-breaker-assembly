@@ -5,7 +5,8 @@ EXTRN BALL2_Y:WORD
 EXTRN BALL_VELOCITY_X:WORD
 EXTRN BALL_VELOCITY_Y:WORD
 EXTRN PADDLE_X:WORD
-EXTRN GAME_OVER_FLAG:BYTE
+EXTRN GAME_OVER_FLAG:WORD
+EXTRN GAME_OVER_FLAG2:WORD
 EXTRN clearTile:FAR
 
 PUBLIC checkCollision
@@ -32,7 +33,6 @@ COLLISION_X dw ?
 COLLISION_Y dw ?
 COLLISION_X_FLAG db ?
 COLLISION_Y_FLAG db ?
-
 
 .CODE
 getPixelColor PROC FAR
@@ -126,7 +126,7 @@ RightBoundary:
 ; Check top boundary
 TopBoundary:
     MOV BX, BALL_Y
-    CMP BX, 1
+    CMP BX, 12
     JG  BottomBoundary
     NEG BALL_VELOCITY_Y
     JMP EndCheck
@@ -142,7 +142,7 @@ BottomBoundary:
     mov BALL_Y,ax
     mov BALL_VELOCITY_X,  2
 	mov BALL_VELOCITY_Y,  -1
-    mov GAME_OVER_FLAG,0
+    SUB GAME_OVER_FLAG,7
     JMP EndCheck
 
 skipBottomBoundary:
@@ -353,9 +353,18 @@ checkCollision2 PROC FAR
     MOV AX, BALL2_X
     MOV BX, BALL2_Y
 
-    CMP BX,100
-    JG EndCheck2
+    ; CMP BX,100
+    ; JG EndCheck2
 
+    BottomBoundary2:
+    cmp BX, SCREEN_HEIGHT - 15
+    JL  skipBottomBoundary2
+
+    SUB GAME_OVER_FLAG2,7
+    JMP EndCheck2
+
+skipBottomBoundary2:
+;Jmp EndCheck2
 ; Check the color of the pixel at the top and bottom edges of the ball
 TopEdgeColor2:
     MOV CX, BALL2_X

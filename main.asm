@@ -29,6 +29,7 @@ PUBLIC BALL_VELOCITY_Y
 PUBLIC CLEAR_TILE_OFFSET
 PUBLIC GAME_EXIT_FLAG
 PUBLIC GAME_OVER_FLAG
+PUBLIC GAME_OVER_FLAG2
 PUBLIC COUNT_TILES
 
 getSystemTime MACRO
@@ -104,15 +105,19 @@ ENDM
 	BALL1_VELOCITY_X dw 2
 	BALL1_VELOCITY_Y dw -1
 	GAME_EXIT_FLAG db 0
-	GAME_OVER_FLAG db 1
+	GAME_OVER_FLAG dw 16
+	GAME_OVER_FLAG2 dw 178
+
 	CLEAR_TILE_OFFSET db 8
 	COUNT_TILES db 0
+
 	TEXT_GAME_OVER db 'Game Over','$'
-	new_line db 10,13,'$'
-	TEXT_PLAYER db 'Player','$'
+	TEXT_PLAYERL db 'YOU ARE LOSE','$'
+	TEXT_PLAYERW db 'YOU ARE WIN','$'
+
 	TEXT_REST_GAME db 'Press Y to Play Again','$'
 	TEXT_REST_MENU db 'Press N to Main Menu ','$'
-
+	yes_or_no db ?
 	TIME DB 1
 
 	BRICKS_COLS EQU 8
@@ -168,7 +173,7 @@ initGame PROC FAR
 
 		; draw the bricks (player 1)
 	MOV CL, BRICKS_COLS
-	MOV DX, 0
+	MOV DX, 8
 printLoop1:
 	MOV AX, DX
 	DIV CL
@@ -180,7 +185,7 @@ printLoop1:
 
 	; draw the bricks (player 2)
 	MOV CL, BRICKS_COLS
-	MOV DX, 0
+	MOV DX, 8
 printLoop2:
 	MOV AX, DX
 	DIV CL
@@ -214,8 +219,25 @@ printLoop2:
 	MOV AX, BALL2_Y
 	MOV BALL_Y, AX
 	CALL drawBall
+    mov Ball_X,2
+	mov BALL_Y,2
+	CALL drawBall
+	 mov Ball_X,9
+	mov BALL_Y,2
+	CALL drawBall
+	 mov Ball_X,16
+	mov BALL_Y,2
+	CALL drawBall
 
-	; draw the separator
+	 mov Ball_X,164
+	mov BALL_Y,2
+	CALL drawBall
+	 mov Ball_X,171
+	mov BALL_Y,2
+	CALL drawBall
+	 mov Ball_X,178
+	mov BALL_Y,2
+	CALL drawBall
 	drawSeparator
 	RET
 initGame ENDP
@@ -230,19 +252,46 @@ Game_over_Screen PROC FAR
 	mov dh,04h
 	mov dl,04h
 	int 10h
+cmp GAME_OVER_FLAG,1
+	jg skiping
 	mov ah,09H
 	lea dx,TEXT_GAME_OVER
 	int 21h
-
 	MOV ah,02H
 	mov bh,00H
-	mov dh,06h
+	mov dh,04h
 	mov dl,04h
 	int 10h
-	mov  ah,09h
-	lea dx,TEXT_PLAYER
+	mov ah,09H
+	lea dx,TEXT_PLAYERL
 	int 21h
+
+	jmp EXIT_SC
 	
+   
+
+skiping:
+cmp GAME_OVER_FLAG2,160
+	jg WINNING
+	MOV ah,02H
+	mov bh,00H
+	mov dh,04h
+	mov dl,04h
+	int 10h
+	mov ah,09H
+	lea dx,TEXT_PLAYERW
+	int 21h
+	jmp EXIT_SC
+WINNING:
+	MOV ah,02H
+	mov bh,00H
+	mov dh,04h
+	mov dl,04h
+	int 10h
+	mov ah,09H
+	lea dx,TEXT_PLAYERW
+	int 21h
+EXIT_SC:
 	MOV ah,02H
 	mov bh,00H
 	mov dh,08h
@@ -393,14 +442,37 @@ playGame:
 	setIntteruptHandle
 
 gameLoop:
+	cmp GAME_OVER_FLAG,1
+	jl Game_Over_Loop
+	cmp GAME_OVER_FLAG,15
+	jl clearchance 
+	cmp COUNT_TILES,40d
+	je Game_Over_Loop
+	jmp coun
+	clearchance:
+	mov ax,GAME_OVER_FLAG
+	add ax,7
+	mov BALL_X,ax
+	mov BALL_Y,2
+	CALL clearBall
+	coun:
+
+	cmp GAME_OVER_FLAG2,160
+	jl Game_Over_Loop
+    cmp GAME_OVER_FLAG2,177
+	jl clearchance2
+	jmp coun2 
+clearchance2:
+	mov ax,GAME_OVER_FLAG2
+	add ax,7
+	mov BALL_X,ax
+	mov BALL_Y,2
+	CALL clearBall
+coun2:
 	GetSystemTime
 	CMP DL, TIME
 	JE gameLoop
 	MOV TIME, DL
-	cmp GAME_OVER_FLAG,0
-	je Game_Over_Loop
-	cmp COUNT_TILES,48d
-	je Game_Over_Loop
 WaitForVSync:
 	MOV DX, 03DAh         ; VGA Input Status Register 1
 WaitForRetrace:
@@ -410,6 +482,7 @@ WaitForRetrace:
 
 	mov cx,3
 collisionLoop:
+
 	push cx
 	cmp GAME_EXIT_FLAG, 1
 	JE gotoMainMenu
@@ -480,7 +553,7 @@ collisionLoop:
 	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 
-
+	
 	CALL movePaddle1
 
 	MOV AX, PADDLE2_X
@@ -506,21 +579,16 @@ collisionLoop:
 	CALL Game_over_Screen
 	MOV AH, 00H         
     INT 16H
-	cmp al,'Y'
-    je restgameLOOP
-	cmp al,'y'
+	mov yes_or_no,al
+	cmp yes_or_no,'Y'
+    jz restgameLOOP
+	cmp yes_or_no,'y'
 	je restgameLOOP
-	; cmp al,'N'
-	; je restmenu
-	; cmp al,'n'
-	; je restmenu
+	
     jmp exit_g
 	restgameLOOP:
 	mov GAME_OVER_FLAG,1
 	CALL initGame
-	; restmenu:
-	; CALL mainMenu
-	; mov GAME_OVER_FLAG,1
 
 exit_g:
 	JMP gameLoop
