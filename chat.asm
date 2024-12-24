@@ -100,9 +100,6 @@ RECEIVE_KEY PROC
     CMP AL, 27
     JZ R_CLOSE_PROGRAM
 
-    ; Set if we need to scroll the window after displaying the value
-    MOV BL, 0
-
     ; Move the cursor to the other side
     CALL MOVE_OTHER_CURSOR
 
@@ -114,12 +111,33 @@ RECEIVE_KEY PROC
     JMP R_CHECK_CURSOR_POS
 
 R_DISPLAY_VALUE:
+    ; check for backspace
+    CMP AL, 8
+    JNE R_SKIP_BACKSPACE
+    CMP otherCursorX, 0
+    JE R_CHECK_CURSOR_POS
+
+R_HANDLE_BACKSPACE:
+    mov ah,0eh
+    int 10h
+    mov al,' '
+    int 10h
+    mov al,8
+    int 10h
+    DEC otherCursorX
+    JMP R_CHECK_CURSOR_POS
+
+
+R_SKIP_BACKSPACE:
     ; Display the value
     MOV DL, AL
     MOV BH, 0
     MOV CX, 1
-    MOV AH, 0Ah
+    MOV AH, 09h
+    MOV BL, 0Dh
     INT 10h
+
+
 
 R_INCREMENT_CURSOR:
     ; Increment the cursor position and check if it is the end of row
@@ -142,6 +160,7 @@ R_SCROLL_WINDOW:
     MOV CL, 0
     MOV DH, 24
     MOV DL, 79
+    MOV BL,03h
     CALL SCROLL_WINDOW
     MOV otherCursorX, 0
     MOV otherCursorY, 24
@@ -181,30 +200,51 @@ WAIT_FOR_EMPTY:
     CMP AL, 27
     JZ T_CLOSE_PROGRAM
 
-T_DISPLAY_VALUE:
     ; Move the cursor to the other side
     CALL MOVE_MY_CURSOR
 
     ; Display the value
-    MOV DL, AL
-    MOV AH, 02h
-    INT 21h
-
-    ; Check if char is a new line
+; Check if char is a new line
     CMP AL, 0Dh
-    JNZ T_GET_CURSOR_POS
+    JNZ T_DISPLAY_VALUE
+    MOV myCursorX, 0
+    INC myCursorY
+    JMP T_CHECK_CURSOR_POS
 
-    ; Print the new line
-    MOV DL, 0Ah
-    MOV AH, 02
-    INT 21h
+T_DISPLAY_VALUE:
+    ; check for backspace
+    CMP AL, 8
+    JNE T_SKIP_BACKSPACE
+    CMP myCursorX, 0
+    JE T_CHECK_CURSOR_POS
 
-T_GET_CURSOR_POS:
-    ; Get new cursor position
-    MOV AH, 03h
+T_HANDLE_BACKSPACE:
+    mov ah,0eh
+    int 10h
+    mov al,' '
+    int 10h
+    mov al,8
+    int 10h
+    DEC myCursorX
+    JMP T_CHECK_CURSOR_POS
+
+T_SKIP_BACKSPACE:
+    ; Display the value
+    MOV DL, AL
+    MOV BH, 0
+    MOV CX, 1
+    MOV AH, 09h
+    MOV BL, 0Bh
     INT 10h
-    MOV myCursorX, DL
-    MOV myCursorY, DH
+
+T_INCREMENT_CURSOR:
+    ; Increment the cursor position and check if it is the end of row
+    INC myCursorX
+    CMP myCursorX, 80
+    JNE T_CHECK_CURSOR_POS
+    MOV myCursorX, 0
+    INC myCursorY
+
 
 T_CHECK_CURSOR_POS:
     ; Check if the cursor is at the end of the screen
@@ -219,6 +259,7 @@ T_SCROLL_WINDOW:
     MOV CL, 0
     MOV DH, 11
     MOV DL, 79
+    
     CALL SCROLL_WINDOW
     MOV myCursorX, 0
     DEC myCursorY
