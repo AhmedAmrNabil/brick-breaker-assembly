@@ -5,7 +5,10 @@ EXTRN BALL2_Y:WORD
 EXTRN BALL_VELOCITY_X:WORD
 EXTRN BALL_VELOCITY_Y:WORD
 EXTRN PADDLE_X:WORD
+EXTRN drawPaddle:FAR
 EXTRN clearTile:FAR
+EXTRN TIME:BYTE
+EXTRN POWERUPSARR:BYTE
 
 PUBLIC checkCollision
 PUBLIC checkCollision2
@@ -16,20 +19,20 @@ PUBLIC checkCollision2
 .386
 
 .DATA
-SCREEN_WIDTH  EQU 160
-SCREEN_HEIGHT EQU 200
-BALL_SIZE     EQU 5
-PADDLE_Y      EQU 180
-PADDLE_WIDTH EQU 50
-PADDLE_HEIGHT EQU 10
-TILE_WIDTH  equ 20
-TILE_HEIGHT equ 10
-BALL_VELOCITY_MAG EQU 1
-COLLISION_X dw ?
-COLLISION_Y dw ?
-COLLISION_X_FLAG db ?
-COLLISION_Y_FLAG db ?
-
+    SCREEN_WIDTH  EQU 160
+    SCREEN_HEIGHT EQU 200
+    BALL_SIZE     EQU 5
+    PADDLE_Y      EQU 180
+    PADDLE_WIDTH EQU 40
+    PADDLE_HEIGHT EQU 10
+    TILE_WIDTH  equ 20
+    TILE_HEIGHT equ 10
+    BALL_VELOCITY_MAG EQU 1
+    COLLISION_X dw ?
+    COLLISION_Y dw ?
+    COLLISION_X_FLAG db ?
+    COLLISION_Y_FLAG db ?
+    POWERUP_FLAG DB 0
 
 .CODE
 getPixelColor PROC FAR
@@ -37,33 +40,71 @@ getPixelColor PROC FAR
 
     MOV AH, 0Dh
     INT 10h
-
     MOV AH, 0
 
+    CMP AX,44
+    JE setPowerUp
+
+    CMP AX,140
+    JE setPowerUp
+
+    CMP AX,92
+    JE setPowerUp
+
+    ret
+
+setPowerUp:
+    MOV POWERUP_FLAG,1
     RET
 getPixelColor ENDP
+
+checkPowerup PROC FAR
+    CMP POWERUP_FLAG, 1
+    JNE ExitCheckPowerup
+
+    MOV AH, 00h
+	INT 1Ah
+    SHR DX, 1
+    AND DX, 1
+
+    MOV ECX, 5
+    MOV SI, 0
+resetPowerups:
+    MOV POWERUPSARR[SI], 0
+    INC SI
+    LOOP resetPowerups
+
+    MOV SI, DX
+    MOV POWERUPSARR[SI], 100
+
+ExitCheckPowerup:
+    RET
+checkPowerup ENDP
 
 checkPaddleCollision PROC FAR
     MOV AX, BALL_Y
     ADD AX, BALL_SIZE
     CMP AX, PADDLE_Y
     JL  endCheckPaddle
+
     MOV AX, PADDLE_Y
     ADD AX, PADDLE_HEIGHT
     CMP AX, BALL_Y
     JL  endCheckPaddle
+
 checkPaddleX:
     MOV AX, BALL_X
     ADD AX,BALL_SIZE
     CMP AX, PADDLE_X
-    JL  endCheckPaddle
+    JLE  endCheckPaddle
+
     MOV AX, PADDLE_X
     ADD AX, PADDLE_WIDTH
     CMP AX, BALL_X
-    JL  endCheckPaddle
+    JLE  endCheckPaddle
     
     MOV AX, BALL_X
-    ADD AX, BALL_SIZE/2
+    ADD AX, BALL_SIZE / 2
     MOV BX, PADDLE_X
     ADD BX,5
     CMP AX,BX
@@ -82,25 +123,38 @@ nearLeft:
     MOV BALL_VELOCITY_Y, -BALL_VELOCITY_MAG*2
     RET
 farLeft:
+    MOV AX,BALL_Y
+    CMP AX,PADDLE_Y
+    JGE collideFromSide
+    
     MOV BALL_VELOCITY_X, -BALL_VELOCITY_MAG*2
     MOV BALL_VELOCITY_Y, -BALL_VELOCITY_MAG
     RET
-
 nearRight:
     MOV BALL_VELOCITY_X, BALL_VELOCITY_MAG
     MOV BALL_VELOCITY_Y, -BALL_VELOCITY_MAG*2
     RET
 
 farRight:
+    MOV AX,BALL_Y
+    CMP AX,PADDLE_Y
+    JGE collideFromSide
+
     MOV BALL_VELOCITY_X, BALL_VELOCITY_MAG*2
     MOV BALL_VELOCITY_Y, -BALL_VELOCITY_MAG
-
     RET
+
+collideFromSide:
+    NEG BALL_VELOCITY_X
+    RET
+
 endCheckPaddle:
+    CALL drawPaddle
     RET
 checkPaddleCollision ENDP
 
 checkCollision PROC FAR
+    MOV POWERUP_FLAG, 0
     MOV AX, BALL_X
     MOV BX, BALL_Y
     MOV COLLISION_X_FLAG, 0
@@ -335,9 +389,9 @@ BallCollidedFromRight:
     JMP BottomEdgeColor
 
 EndCheck:
+    CALL checkPowerup
     RET
 checkCollision ENDP
-
 
 checkCollision2 PROC FAR
     MOV AX, BALL2_X

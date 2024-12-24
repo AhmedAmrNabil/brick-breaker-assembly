@@ -27,16 +27,20 @@ PUBLIC BALL_VELOCITY_X
 PUBLIC BALL_VELOCITY_Y
 PUBLIC CLEAR_TILE_OFFSET
 PUBLIC GAME_EXIT_FLAG
+PUBLIC TIME
+PUBLIC LCG
+PUBLIC SEED
+PUBLIC POWERUPSARR
+PUBLIC PADDLE_VEL_MAG
 
 getSystemTime MACRO
-	MOV AH,2CH    ;get the system time
+	MOV AH, 2CH    ;get the system time
 	INT 21H       ; CH = hour, CL = minute, DH = seconds, DL = 1/100s
-
 ENDM
 
 setIntteruptHandle MACRO
 ;getting int09h interrupt vector handler
-	cli                       ;turn off interrupt flag
+	CLI                       ;turn off interrupt flag
 	PUSHA
 ;get the interrupt 09 address
 	MOV   AX,3509h
@@ -59,7 +63,7 @@ setIntteruptHandle MACRO
 ENDM
 
 resetInterruptHandle MACRO
-	cli
+	CLI
 
 	MOV  AX,int9Seg
 	MOV  DX,int9Off
@@ -125,6 +129,7 @@ initGame MACRO
 	INT 10h
 
 	; set initial values
+	MOV GAMELOOP_SPEED, 2
 	MOV GAME_EXIT_FLAG,0
 	MOV PADDLE1_X , 50
 	MOV PADDLE2_X , 210
@@ -252,14 +257,16 @@ ENDM
 	POWERUP_COUNT_1 db 0
 	POWERUP_COUNT_2 db 0
 
+	GAMELOOP_SPEED dw 2
+
 	CLEAR_TILE_OFFSET db 8
 
-	TIME DB 1
+	TIME DB 0
 
 	BRICKS_COLS EQU 8
 	BRICKS_COUNT EQU 48
-	PADDLE_VEL_MAG EQU 5
-	BALL_SIZE EQU 6
+	PADDLE_VEL_MAG dw 4
+	BALL_SIZE EQU 5
 
 	int9Seg DW ?
 	int9Off DW ?
@@ -272,6 +279,8 @@ ENDM
 	enemyRandomTiles DB 5 dup(0)
 
 	waitingMessage db 'Waiting for another player$'
+
+	POWERUPSARR db 5 dup(0)
 
 	COM EQU 03F8h
 .CODE
@@ -303,9 +312,9 @@ generateRandomBricks PROC FAR
 	SHL EAX, 16
 	MOV AX,DX
 	MOV SEED, EAX
-	MUL EAX
 
 	; generate random powerup count
+	MUL EAX
 	SHR EAX, 15
 	AND EAX,00000003h
 	ADD EAX,2
@@ -584,6 +593,36 @@ exitReceiveAll:
 	RET
 ReceiveAll ENDP
 
+powerups PROC FAR
+	PUSHA
+
+MOV PADDLE_VEL_MAG, 4
+
+checkSpeedUpPaddle:
+	MOV AL, POWERUPSARR[0]
+	CMP AL, 0
+	JE checkSlowDownPaddle
+
+	DEC POWERUPSARR[0]
+	MOV PADDLE_VEL_MAG, 8
+	JMP checkBallSpeed
+
+checkSlowDownPaddle:
+	MOV AL, POWERUPSARR[1]
+	CMP AL, 0
+	JE checkBallSpeed
+
+	DEC POWERUPSARR[1]
+	MOV PADDLE_VEL_MAG, 2
+	JMP checkBallSpeed
+
+checkBallSpeed:
+
+EndPowerups:
+	POPA
+	RET
+powerups ENDP
+
 MAIN PROC FAR
 	MOV AX, @DATA
 	MOV DS, AX
@@ -616,6 +655,8 @@ gameLoop:
 	JE gameLoop
 	MOV TIME, DL
 
+	CALL powerups
+
 WaitForVSync:
 	MOV DX, 03DAh         ; VGA Input Status Register 1
 WaitForRetrace:
@@ -623,7 +664,7 @@ WaitForRetrace:
 	TEST AL, 08H          ; Check the Vertical Retrace bit (bit 3)
 	JZ WaitForRetrace     ; Loop until retrace starts
 
-	MOV CX, BALL_SIZE / 2
+	MOV CX, GAMELOOP_SPEED
 collisionLoop:
 	PUSH CX
 	CMP GAME_EXIT_FLAG, 1
@@ -632,8 +673,9 @@ collisionLoop:
 	CALL SendAll
 	CALL ReceiveAll
 
+
 	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-	; Player 1 ball
+	; Player 1 ball                       ;
 	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 	MOV AX, BALL1_X
@@ -670,11 +712,11 @@ collisionLoop:
 	MOV BALL1_Y, AX
 
 	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-	; End Player 1 ball
+	; End Player 1 ball                   ;
 	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-	; Player 2 ball
+	; Player 2 ball                       ;
 	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 	MOV AX, BALL2_X
@@ -701,22 +743,25 @@ collisionLoop:
 	JMP collisionLoop
 
 	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-	; End Player 2 ball
+	; End Player 2 ball                   ;
 	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-	; Player 1 paddle
+	; Player 1 paddle                     ;
 	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 	skipLoop:
 	CALL movePaddle1
 
 	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-	; End Player 1 paddle
+	; End Player 1 paddle                 ;
 	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+
+
+
 	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-	; Player 2 paddle
+	; Player 2 paddle                     ;
 	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 	MOV AX, PADDLE2_X
@@ -733,7 +778,7 @@ collisionLoop:
 	CALL drawPaddle
 
 	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-	; End Player 2 paddle
+	; End Player 2 paddle                 ;
 	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 	drawSeparator
