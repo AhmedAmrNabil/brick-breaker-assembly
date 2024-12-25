@@ -671,13 +671,28 @@ WaitForReceiveByte:
 	MOV DX, COM
 	IN AL, DX
 	CMP AL, 0FFh
-	JNE continueWaitForReceiveByte
+	JNE checkGameOverWin
 	MOV GAME_EXIT_FLAG, 1
+	JMP exitReceiveAll
+	
+checkGameOverWin:
+	CMP AL,0FCH
+	JNE checkGameOverLose
+	MOV GAME_OVER_FLAG2,0
+	MOV GAME_OVER_FLAG,16
+	JMP exitReceiveAll
+
+checkGameOverLose:
+	CMP AL,0FBH
+	JNE continueWaitForReceiveByte
+	MOV GAME_OVER_FLAG,0
+	MOV GAME_OVER_FLAG2,178
 	JMP exitReceiveAll
 
 continueWaitForReceiveByte:
 	CMP AL, 0FDh
 	JNE WaitForReceiveByte
+
 
 WaitBallX:
 	MOV DX, COM + 5
@@ -790,6 +805,30 @@ actuallyExitPowerups:
 	RET
 powerups ENDP
 
+SendGameOver PROC FAR
+
+waitSendGameOver:
+	MOV DX,COM+5
+	IN AL,DX
+	TEST AL, 00100000b
+	JZ waitSendGameOver
+
+	MOV AL,0FBH
+	MOV DX,COM
+	CMP GAME_OVER_FLAG,1
+	JL sendLose
+	JMP sendData
+
+sendLose:
+	MOV AL,0FCH
+
+sendData:
+	OUT DX,AL
+	
+	RET
+SendGameOver ENDP
+
+
 MAIN PROC FAR
 	MOV AX, @DATA
 	MOV DS, AX
@@ -838,14 +877,18 @@ collisionLoop:
 	CMP GAME_EXIT_FLAG, 1
 	JE gotoMainMenu
 
+
+;; send and recieve data
 	CALL SendAll
 	CALL ReceiveAll
 
+
+;; check for game over
 	CMP GAME_OVER_FLAG, 1
 	JL Game_Over_Loop
 	CMP GAME_OVER_FLAG, 15
 	JL clearchance 
-	CMP COUNT_TILES, 5d
+	CMP COUNT_TILES, 40d
 	JE Game_Over_Loop
 	JMP coun
 clearchance:
@@ -978,7 +1021,7 @@ skipDrawPaddle2:
 	JMP gameLoop
 
 Game_Over_Loop:
-	CALL SendAll
+	CALL SendGameOver
 	resetInterruptHandle
 	CALL Game_over_Screen
 	MOV AH, 00H         

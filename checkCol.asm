@@ -245,7 +245,7 @@ BottomBoundary:
     MOV BALL_Y, AX
     MOV BALL_VELOCITY_X, 2
 	MOV BALL_VELOCITY_Y, -1
-    ; SUB GAME_OVER_FLAG, 7
+    SUB GAME_OVER_FLAG, 7
     JMP EndCheck
 
 skipBottomBoundary:
@@ -457,7 +457,7 @@ BottomBoundary2:
     cmp BX, PADDLE_Y + 2
     JL  skipBottomBoundary2
 
-    ; SUB GAME_OVER_FLAG2, 7
+    SUB GAME_OVER_FLAG2, 7
     JMP EndCheck2
 
 skipBottomBoundary2:
