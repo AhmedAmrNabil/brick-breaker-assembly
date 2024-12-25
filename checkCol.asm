@@ -1,3 +1,5 @@
+EXTRN BALL_X:WORD
+EXTRN BALL_Y:WORD
 EXTRN BALL1_X:WORD
 EXTRN BALL1_Y:WORD
 EXTRN BALL2_X:WORD
@@ -11,6 +13,8 @@ EXTRN clearTile:FAR
 EXTRN TIME:BYTE
 EXTRN POWERUPSARR:BYTE
 EXTRN PADDLE_WIDTH:WORD
+EXTRN GAME_OVER_FLAG:WORD
+EXTRN GAME_OVER_FLAG2:WORD
 
 PUBLIC checkCollision
 PUBLIC checkCollision2
@@ -38,6 +42,8 @@ PUBLIC checkCollision2
 	MULTIPLIER EQU 22695477	
 	INCREMENT EQU 1
 	MODULUS EQU 2147483647
+    rest_position_X equ 80
+    rest_position_Y equ 150
 
 .CODE
 getPixelColor PROC FAR
@@ -113,7 +119,7 @@ resetPowerups:
     MOV ECX, 3
     DIV ECX
 
-    MOV SI, 2
+    MOV SI, DX
     MOV POWERUPSARR[SI], 127
 
 ExitCheckPowerup:
@@ -146,7 +152,7 @@ checkPaddleX:
     MOV CL,2
     DIV CL
     MOV AH,0
-    SUB AL,7
+    ; SUB AL,7
     MOV DX,AX
 
     MOV AX, BALL1_X
@@ -223,7 +229,7 @@ RightBoundary:
 ; Check top boundary
 TopBoundary:
     MOV BX, BALL1_Y
-    CMP BX, 1
+    CMP BX, 12
     JG  BottomBoundary
     NEG BALL_VELOCITY_Y
     JMP EndCheck
@@ -231,19 +237,22 @@ TopBoundary:
 ; Will be removed later for game over
 ; Check bottom boundary
 BottomBoundary:
-    CMP BX, SCREEN_HEIGHT - BALL_SIZE
+    CMP BX, PADDLE_Y + 2
     JL  skipBottomBoundary
-    NEG BALL_VELOCITY_Y
+    MOV AX, rest_position_X
+    MOV BALL_X, AX
+    MOV AX,rest_position_Y
+    MOV BALL_Y, AX
+    MOV BALL_VELOCITY_X, 2
+	MOV BALL_VELOCITY_Y, -1
+    ; SUB GAME_OVER_FLAG, 7
     JMP EndCheck
 
 skipBottomBoundary:
-    
     CMP BX, 100
-    JL skipPaddle
+    JL TopEdgeColor
     CALL checkPaddleCollision
     JMP EndCheck
-    
-skipPaddle:
 
 ; Check the color of the pixel at the top and bottom edges of the ball
 TopEdgeColor:
@@ -444,8 +453,14 @@ checkCollision2 PROC FAR
     MOV AX, BALL2_X
     MOV BX, BALL2_Y
 
-    CMP BX,100
-    JG EndCheck2
+BottomBoundary2:
+    cmp BX, PADDLE_Y + 2
+    JL  skipBottomBoundary2
+
+    ; SUB GAME_OVER_FLAG2, 7
+    JMP EndCheck2
+
+skipBottomBoundary2:
 
 ; Check the color of the pixel at the top and bottom edges of the ball
 TopEdgeColor2:
@@ -521,7 +536,7 @@ RightEdgeColor2:
     CMP AX, 0
     JNE BallCollided
 
-    JMP EndCheck
+    JMP EndCheck2
 
 ; Clear the tile above the ball
 BallCollided:
@@ -546,7 +561,6 @@ BallCollided:
     JMP TopEdgeColor2
 
 ; Clear the tile below the ball
-
 
 EndCheck2:
     RET
