@@ -149,10 +149,9 @@ checkPaddleX:
     JLE  endCheckPaddle
     
     MOV AX, PADDLE_WIDTH
-    MOV CL,2
-    DIV CL
+    SHR AX,1
     MOV AH,0
-    ; SUB AL,7
+    SUB AL,7
     MOV DX,AX
 
     MOV AX, BALL1_X
