@@ -1,4 +1,5 @@
 EXTRN CLEAR_TILE_OFFSET:BYTE
+EXTRN COUNT_TILES:BYTE
 
 PUBLIC drawTile
 PUBLIC drawColoredTile
@@ -110,7 +111,6 @@ drawBotBorder:
 	POPA
 	RET
 drawTile ENDP
-
 
 drawColoredTile PROC FAR
 	PUSHA
@@ -226,6 +226,12 @@ clearTile PROC FAR
 	ADD AX, TILE_HEIGHT
 	MOV TITLE_END_Y, AX
 
+	; Check if the tile is there is a tile
+	MOV AH, 0Dh
+	INT 10h
+	CMP AL, 0
+	JE exitClearTile
+
 	; draw the tile
 	MOV AL, 00h
 	MOV AH, 0ch
@@ -284,8 +290,20 @@ clearBotBorder:
 	CMP CX, TILE_END_X
 	JL clearBotBorder
 
+
+
+exitClearTile:
 	POPF
 	POPA
+
+	CMP AL, 8
+	JGE fianlExitClearTile
+
+	MOV DH, COUNT_TILES
+	INC DH
+	MOV COUNT_TILES, DH
+
+fianlExitClearTile:
 	RET
 clearTile ENDP
 END

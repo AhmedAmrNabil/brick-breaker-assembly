@@ -27,6 +27,8 @@ PUBLIC BALL2_X
 PUBLIC BALL2_Y
 PUBLIC BALL_VELOCITY_X
 PUBLIC BALL_VELOCITY_Y
+PUBLIC BALL1_VELOCITY_X
+PUBLIC BALL1_VELOCITY_Y
 PUBLIC CLEAR_TILE_OFFSET
 PUBLIC GAME_EXIT_FLAG
 PUBLIC TIME
@@ -37,6 +39,11 @@ PUBLIC PADDLE_VEL_MAG
 PUBLIC PADDLE_WIDTH
 PUBLIC PADDLE2_WIDTH
 PUBLIC SKIP_PADDLE_CHECK
+PUBLIC GAME_OVER_FLAG
+PUBLIC GAME_OVER_FLAG2
+PUBLIC COUNT_TILES
+PUBLIC CI_MOVE_LEFT
+PUBLIC CI_MOVE_RIGHT
 
 getSystemTime MACRO
 	MOV AH, 2CH    ;get the system time
@@ -127,7 +134,150 @@ print:
 	POPA
 ENDM
 
-initGame MACRO
+.MODEL small
+.386
+
+.STACK 100h
+.DATA
+	CI_MOVE_LEFT dw 0
+	CI_MOVE_RIGHT dw 0
+
+	PADDLE1_VEL_X dw 0
+
+	PADDLE_X dw ?
+	PADDLE1_X dw 50
+	PADDLE2_X dw 210
+	PADDLE2_X2 dw 210
+	PADDLE_WIDTH dw 40
+	PADDLE2_WIDTH dw 40
+
+	BALL_X dw ?
+	BALL_Y dw ?
+	BALL1_X dw 80
+	BALL1_Y dw 150
+	BALL2_X dw 240
+	BALL2_Y dw 150
+	BaLL2_Xrec dw 240
+	BaLL2_Yrec dw 150
+	BALL_VELOCITY_X dw ?
+	BALL_VELOCITY_Y dw ?
+	BALL1_VELOCITY_X dw 2
+	BALL1_VELOCITY_Y dw -1
+	
+	POWERUP_COUNT_1 db 0
+	POWERUP_COUNT_2 db 0
+
+	GAME_EXIT_FLAG db 0
+	GAME_OVER_FLAG dw 16
+	GAME_OVER_FLAG2 dw 178
+
+	GAMELOOP_SPEED dw 2
+
+	CLEAR_TILE_OFFSET db 8
+	COUNT_TILES db 0
+
+	TEXT_GAME_OVER db 'Game Over','$'
+	TEXT_PLAYERL db 'YOU LOST$'
+	TEXT_PLAYERW db 'YOU WON$'
+
+	TEXT_REST_MENU db 'Press Y to go back to the main menu','$'
+	yes_or_no db ?
+
+	TIME DB 0
+
+	BRICKS_COLS EQU 8
+	BRICKS_COUNT EQU 48
+	BALL_SIZE EQU 5
+	PADDLE_VEL_MAG dw 4
+
+	int9Seg DW ?
+	int9Off DW ?
+	SEED DD 5970917
+	MULTIPLIER EQU 22695477	
+	INCREMENT EQU 1
+	MODULUS EQU 2147483647
+
+	myRandomTiles DB 5 dup(0)
+	enemyRandomTiles DB 5 dup(0)
+
+	waitingMessage db 'Waiting for another player$'
+
+	POWERUPSARR db 5 dup(0)
+
+	SKIP_PADDLE_CHECK db 0
+
+	COM EQU 03F8h
+.CODE
+
+Game_over_Screen PROC FAR
+	MOV AH, 0
+	MOV AL, 13h
+	INT 10h
+
+	MOV ah,02H
+	MOV bh,00H
+	MOV dh,04h
+	MOV dl,04h
+	int 10h
+
+	MOV ah,09H
+	lea dx,TEXT_GAME_OVER
+	int 21h
+
+	CMP GAME_OVER_FLAG, 1
+	jg WINNING
+
+	MOV ah,02H
+	MOV bh,00H
+	MOV dh,06h
+	MOV dl,04h
+	int 10h
+	MOV ah,09H
+	lea dx,TEXT_PLAYERL
+	int 21h
+	JMP EXIT_SC
+
+WINNING:
+	MOV ah,02H
+	MOV bh,00H
+	MOV dh,06h
+	MOV dl,04h
+	int 10h
+	MOV ah,09H
+	lea dx,TEXT_PLAYERW
+	int 21h
+
+EXIT_SC:
+	MOV ah,02H
+	MOV bh,00H
+	MOV dh,08h
+	MOV dl,04h
+	int 10h
+
+	MOV ah, 09h
+	lea dx,TEXT_REST_MENU
+	int 21h
+
+RET
+Game_over_Screen ENDP
+
+LCG PROC FAR
+	PUSHA
+	MOV EAX, SEED
+	MOV EBX, MULTIPLIER
+	MUL EBX
+	ADD EAX, INCREMENT
+	MOV SEED, EAX
+	MOV EDX, 0
+	MOV EBX,MODULUS
+	DIV EBX
+	MOV SEED, EDX
+	MOV EAX, EDX
+	POPA
+	RET
+LCG ENDP
+
+initGame PROC FAR
 	; set video mode to 320x200 256-color mode
 	MOV AH, 0
 	MOV AL, 13h
@@ -139,6 +289,7 @@ initGame MACRO
 	MOV PADDLE1_X , 50
 	MOV PADDLE2_X , 210
 	MOV PADDLE2_X2 , 210
+	MOV PADDLE1_VEL_X , 0
 	MOV BALL1_X , 80
 	MOV BALL1_Y , 150
 	MOV BALL2_X , 240
@@ -149,8 +300,11 @@ initGame MACRO
 	MOV BALL1_VELOCITY_Y , -2
 	MOV PADDLE_WIDTH,40
 	MOV PADDLE2_WIDTH,40
-
-	; reset powerups (todo)
+	MOV GAME_OVER_FLAG, 16
+	MOV GAME_OVER_FLAG2, 178
+	MOV COUNT_TILES, 0
+	MOV CI_MOVE_LEFT, 0
+	MOV CI_MOVE_RIGHT, 0
 
 	MOV CX,5
 	MOV SI,0
@@ -163,7 +317,7 @@ resetPowerups:
 
 	; draw the bricks (player 1)
 	MOV CL, BRICKS_COLS
-	MOV DX, 0
+	MOV DX, 8
 printLoop1:
 	MOV AX, DX
 	DIV CL
@@ -175,7 +329,7 @@ printLoop1:
 
 	; draw the bricks (player 2)
 	MOV CL, BRICKS_COLS
-	MOV DX, 0
+	MOV DX, 8
 printLoop2:
 	MOV AX, DX
 	DIV CL
@@ -198,6 +352,7 @@ powerupLoop1:
 	MOV CL,8
 	DIV CL
 	XCHG AL, AH
+	INC AH
 	CALL drawColoredTile
 	POP CX
 	LOOP powerupLoop1	
@@ -215,6 +370,7 @@ powerupLoop2:
 	DIV CL
 	XCHG AL, AH
 	ADD AL, 8
+	INC AH
 	CALL drawColoredTile
 	POP CX
 	LOOP powerupLoop2	
@@ -243,85 +399,29 @@ powerupLoop2:
 	MOV BALL_Y, AX
 	CALL drawBall
 
+	MOV Ball_X,2
+	MOV BALL_Y,2
+	CALL drawBall
+	MOV Ball_X,9
+	MOV BALL_Y,2
+	CALL drawBall
+	MOV Ball_X,16
+	MOV BALL_Y,2
+	CALL drawBall
+
+	MOV Ball_X,164
+	MOV BALL_Y,2
+	CALL drawBall
+	MOV Ball_X,171
+	MOV BALL_Y,2
+	CALL drawBall
+	MOV Ball_X,178
+	MOV BALL_Y,2
+	CALL drawBall
+
 	; draw the separator
 	drawSeparator
-ENDM
-
-.MODEL small
-.386
-
-.STACK 100h
-.DATA
-	PADDLE1_VEL_X dw 0
-
-	PADDLE_X dw ?
-	PADDLE1_X dw 50
-	PADDLE2_X dw 210
-	PADDLE2_X2 dw 210
-	PADDLE_WIDTH dw 40
-	PADDLE2_WIDTH dw 40
-
-	BALL_X dw ?
-	BALL_Y dw ?
-	BALL1_X dw 80
-	BALL1_Y dw 150
-	BALL2_X dw 240
-	BALL2_Y dw 150
-	BaLL2_Xrec dw 240
-	BaLL2_Yrec dw 150
-	BALL_VELOCITY_X dw ?
-	BALL_VELOCITY_Y dw ?
-	BALL1_VELOCITY_X dw 2
-	BALL1_VELOCITY_Y dw -1
-	GAME_EXIT_FLAG db 0
-	POWERUP_COUNT_1 db 0
-	POWERUP_COUNT_2 db 0
-
-	GAMELOOP_SPEED dw 2
-
-	CLEAR_TILE_OFFSET db 8
-
-	TIME DB 0
-
-	BRICKS_COLS EQU 8
-	BRICKS_COUNT EQU 48
-	PADDLE_VEL_MAG dw 4
-	BALL_SIZE EQU 5
-
-	int9Seg DW ?
-	int9Off DW ?
-	SEED DD 5970917
-	MULTIPLIER EQU 22695477	
-	INCREMENT EQU 1
-	MODULUS EQU 2147483647
-
-	myRandomTiles DB 5 dup(0)
-	enemyRandomTiles DB 5 dup(0)
-
-	waitingMessage db 'Waiting for another player$'
-
-	POWERUPSARR db 5 dup(0)
-
-	SKIP_PADDLE_CHECK db 0
-
-	COM EQU 03F8h
-.CODE
-
-LCG PROC FAR
-	PUSHA
-	MOV EAX, SEED
-	MOV EBX, MULTIPLIER
-	MUL EBX
-	ADD EAX, INCREMENT
-	MOV SEED, EAX
-	MOV EDX, 0
-	MOV EBX,MODULUS
-	DIV EBX
-	MOV SEED, EDX
-	MOV EAX, EDX
-	POPA
-	RET
-LCG ENDP
+initGame ENDP
 
 generateRandomBricks PROC FAR
 	PUSHA
@@ -350,7 +450,7 @@ randomBricksLoop:
 	PUSH CX
 	CALL LCG
 	MOV EAX,SEED
-	MOV ECX,48
+	MOV ECX,40
 	XOR EDX,EDX
 	DIV ECX
 	MOV myRandomTiles[SI], DL
@@ -560,8 +660,6 @@ exitSendAll:
 	RET
 SendAll ENDP
 
-
-
 ReceiveAll PROC FAR
 
 WaitForReceiveByte:
@@ -573,13 +671,28 @@ WaitForReceiveByte:
 	MOV DX, COM
 	IN AL, DX
 	CMP AL, 0FFh
-	JNE continueWaitForReceiveByte
+	JNE checkGameOverWin
 	MOV GAME_EXIT_FLAG, 1
+	JMP exitReceiveAll
+	
+checkGameOverWin:
+	CMP AL,0FCH
+	JNE checkGameOverLose
+	MOV GAME_OVER_FLAG2,0
+	MOV GAME_OVER_FLAG,16
+	JMP exitReceiveAll
+
+checkGameOverLose:
+	CMP AL,0FBH
+	JNE continueWaitForReceiveByte
+	MOV GAME_OVER_FLAG,0
+	MOV GAME_OVER_FLAG2,178
 	JMP exitReceiveAll
 
 continueWaitForReceiveByte:
 	CMP AL, 0FDh
 	JNE WaitForReceiveByte
+
 
 WaitBallX:
 	MOV DX, COM + 5
@@ -692,6 +805,30 @@ actuallyExitPowerups:
 	RET
 powerups ENDP
 
+SendGameOver PROC FAR
+
+waitSendGameOver:
+	MOV DX,COM+5
+	IN AL,DX
+	TEST AL, 00100000b
+	JZ waitSendGameOver
+
+	MOV AL,0FBH
+	MOV DX,COM
+	CMP GAME_OVER_FLAG,1
+	JL sendLose
+	JMP sendData
+
+sendLose:
+	MOV AL,0FCH
+
+sendData:
+	OUT DX,AL
+	
+	RET
+SendGameOver ENDP
+
+
 MAIN PROC FAR
 	MOV AX, @DATA
 	MOV DS, AX
@@ -715,7 +852,8 @@ playGame:
 
 	CALL loadingScreen
 
-	initGame
+	CALL initGame
+	CALL SendAll
 	setIntteruptHandle
 
 gameLoop:
@@ -739,8 +877,39 @@ collisionLoop:
 	CMP GAME_EXIT_FLAG, 1
 	JE gotoMainMenu
 
+
+;; send and recieve data
 	CALL SendAll
 	CALL ReceiveAll
+
+
+;; check for game over
+	CMP GAME_OVER_FLAG, 1
+	JL Game_Over_Loop
+	CMP GAME_OVER_FLAG, 15
+	JL clearchance 
+	CMP COUNT_TILES, 40d
+	JE Game_Over_Loop
+	JMP coun
+clearchance:
+	MOV ax, GAME_OVER_FLAG
+	ADD ax, 7
+	MOV BALL_X, ax
+	MOV BALL_Y, 2
+	CALL clearBall
+coun:
+	CMP GAME_OVER_FLAG2, 160
+	JL Game_Over_Loop
+	CMP GAME_OVER_FLAG2, 177
+	JL clearchance2
+	JMP coun2 
+clearchance2:
+	MOV AX, GAME_OVER_FLAG2
+	ADD AX,7
+	MOV BALL_X,AX
+	MOV BALL_Y,2
+	CALL clearBall
+coun2:
 
 	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 	; Player 1 ball                       ;
@@ -850,6 +1019,20 @@ skipDrawPaddle2:
 	drawSeparator
 
 	JMP gameLoop
+
+Game_Over_Loop:
+	CALL SendGameOver
+	resetInterruptHandle
+	CALL Game_over_Screen
+	MOV AH, 00H         
+	INT 16H
+	MOV yes_or_no,AL
+	CMP yes_or_no,'Y'
+	JE gotoMainMenu
+	CMP yes_or_no,'y'
+	JE gotoMainMenu
+	JMP Game_Over_Loop
+
 gotoMainMenu:
 	resetInterruptHandle
 	call SendAll
@@ -864,7 +1047,3 @@ exitGame:
 	INT 21h
 MAIN ENDP
 END MAIN
-
-
-
-
