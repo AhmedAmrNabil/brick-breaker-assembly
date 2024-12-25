@@ -5,8 +5,8 @@ PUBLIC mainMenu
 
 .DATA
 
-    filename db 'menuImg.bin', 0
-    buffer_size equ 64000d
+    filename db 'menu.bin', 0
+    buffer_size equ 64001d
     buffer db buffer_size dup(?)
 
     IMAGE_HEIGHT equ 200
@@ -15,10 +15,11 @@ PUBLIC mainMenu
     SCREEN_HEIGHT equ 200       
 
     choice dw 0
-    startArrow dw 58
-    endArrow dw 58+15
+    startArrow dw 55
+    endArrow dw 55+15
 
-    startPositions dw 58,154,250
+    startPositions dw 55,153,251
+    arrowHeight equ 140
 
 .CODE
 
@@ -34,7 +35,7 @@ drawArrow PROC FAR
     MOV endArrow,BX
 
     MOV CX, startArrow
-    MOV DX, 130
+    MOV DX, arrowHeight
     MOV AH, 0CH
     MOV AL, 15d
 
@@ -56,7 +57,7 @@ drawArrow ENDP
 
 clearArrow PROC FAR
 
-     MOV AX,choice
+    MOV AX,choice
     MOV SI,AX
     SHL SI,1
     MOV BX,startPositions[SI]
@@ -65,7 +66,7 @@ clearArrow PROC FAR
     MOV endArrow,BX
 
     MOV CX, startArrow
-    MOV DX, 130
+    MOV DX, arrowHeight
     MOV AH, 0CH
     MOV AL, 00d
 
@@ -87,62 +88,22 @@ clearArrow ENDP
 
 drawImage PROC
 
-
-
-    MOV DI,0 
-
-    PUSH DI
-    PUSH DX
-
-    MOV AX, 0A000h 
+    MOV AX, 0A000h
     MOV ES, AX
 
-    XOR DI, DI
+    MOV DI, 0
+    MOV SI, offset buffer
     MOV CX, 320 * 200 ; Total pixels in the screen (320x200)
-    MOV AL, 0fH ; Set color to black
 
-    REP STOSB
-
-    POP DX
-    POP DI
-
-    MOV SI,offset buffer
-    
-    MOV DX,IMAGE_HEIGHT
-
-    REPEAT2:
-    MOV CX,IMAGE_WIDTH
-    DRAW_PIXELS:
-        ; Check if the byte at [SI] is 250 TO SKIP IT
-        mov AH,BYTE PTR [SI]
-        CMP BYTE PTR [SI], 250
-        JE SKIP_DRAW
-
-        ; Draw the pixel
-        MOVSB
-        JMP DECC
-
-        SKIP_DRAW:
-        INC DI
-        INC SI
-
-        DECC:
-        DEC CX
-
-        JNZ DRAW_PIXELS
-
-    ADD DI,SCREEN_WIDTH - IMAGE_WIDTH
-    DEC DX
-    JNZ REPEAT2
+    REP MOVSB
 
     RET
-
 drawImage ENDP
 
 displayMenu PROC
 
 
-     mov ah, 03Dh
+    mov ah, 03Dh
     mov al, 0 ; open attribute: 0 - read-only, 1 - write-only, 2 -read&write
     mov dx, offset filename ; ASCIIZ filename to open
     int 21h
