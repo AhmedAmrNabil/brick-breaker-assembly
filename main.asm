@@ -11,7 +11,7 @@ EXTRN moveBall:FAR
 EXTRN checkCollision:FAR
 EXTRN movePaddle1:FAR
 EXTRN mainMenu:FAR
-EXTRN choice:BYTE
+EXTRN choice:WORD
 EXTRN checkCollision2:FAR
 EXTRN Chat:FAR
 
@@ -180,7 +180,7 @@ ENDM
 	TEXT_PLAYERL db 'YOU LOST$'
 	TEXT_PLAYERW db 'YOU WON$'
 
-	TEXT_REST_MENU db 'Press Y to go back to the main menu','$'
+	TEXT_REST_MENU db 'Press Enter to go back','$'
 	yes_or_no db ?
 
 	TIME DB 0
@@ -837,12 +837,11 @@ MAIN PROC FAR
 
 menuLoop:
     CALL mainMenu
-
-    CMP choice, '1'          
+    CMP choice, 0          
     JE playGame
-    CMP choice, '2'      
+    CMP choice, 1     
     JE chatOption
-    CMP choice, '3'          
+    CMP choice, 2          
     JE exitGame
 
   JMP menuLoop
@@ -1027,9 +1026,7 @@ Game_Over_Loop:
 	MOV AH, 00H         
 	INT 16H
 	MOV yes_or_no,AL
-	CMP yes_or_no,'Y'
-	JE gotoMainMenu
-	CMP yes_or_no,'y'
+	CMP yes_or_no,13
 	JE gotoMainMenu
 	JMP Game_Over_Loop
 
@@ -1043,6 +1040,10 @@ chatOption:
 	JMP menuLoop 
 
 exitGame:
+	MOV AH,0H
+	MOV AL,3H
+	INT 10H
+
 	MOV AH, 4CH
 	INT 21h
 MAIN ENDP
