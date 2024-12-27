@@ -7,6 +7,7 @@
 This repository contains the implementation of a **Brick Breaker** game developed using **8086 Assembly**. The game is a part of our project for the **Microprocessors Course** in our **second-year Computer Engineering** program. It features a classic brick-breaking gameplay with unique power-ups and a **separate chat mode** for communication outside of the game itself. 🚀
 
 ### Features ✨:
+
 - **Brick Breaker Game**: The player controls a paddle and tries to break all the bricks on the screen by bouncing a ball off the paddle. 🧱🎾
 - **Power-ups**: Special bricks give power-ups when hit:
   - **Bigger Paddle**: Increases the size of the paddle. ⬛
