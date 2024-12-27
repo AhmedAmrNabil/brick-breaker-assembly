@@ -46,8 +46,8 @@ To run this program, you'll need the following:
 
 ## Game Controls 🎮
 
-- **Left Arrow**: Move the paddle to the left. ⬅️
-- **Right Arrow**: Move the paddle to the right. ➡️
+- **A**: Move the paddle to the left. ⬅️
+- **D**: Move the paddle to the right. ➡️
 
 ## Power-ups 💡
 
