@@ -10,7 +10,7 @@ fullresolution=640x400
 windowresolution=640x400
 output=openglpp
 [autoexec]
-mount C C:\8086
+mount C --path--/assembler
 set PATH=%PATH%;C:
 MOUNT D --path--
 D:
