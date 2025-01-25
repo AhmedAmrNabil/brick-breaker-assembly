@@ -1,6 +1,6 @@
-<div align="center"> <img src="https://github.com/user-attachments/assets/6dcb30e7-f328-4d86-8721-079d55873360" alt="Game Screenshot" width="800"/> </div>
+# <h1 align="center">Brick Breaker Game in 8086 Assembly 🎮</h1>
 
-# Brick Breaker Game in 8086 Assembly 🎮
+https://github.com/user-attachments/assets/c5672ec0-ba66-4511-8285-eafa63b37634
 
 ## Overview 📝
 
